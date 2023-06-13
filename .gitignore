@@ -1,0 +1,77 @@
+# Documentation (internal AI planning/reference only)
+docs/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub/
+.pub-cache/
+.pub-preload-cache/
+build/
+**/build/
+**/generated_plugin_registrant.dart
+
+# Android
+.gradle/
+**/android/.gradle/
+**/android/local.properties
+**/android/captures/
+**/android/key.properties
+*.jks
+*.keystore
+
+# iOS / macOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/.last_build_id
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/macos/Pods/
+**/macos/Flutter/ephemeral/
+**/macos/Runner/GeneratedPluginRegistrant.swift
+**/DerivedData/
+**/xcuserdata/
+
+# Linux / Windows generated registrants
+**/linux/flutter/generated_plugin_registrant.*
+**/linux/flutter/generated_plugins.cmake
+**/windows/flutter/generated_plugin_registrant.*
+**/windows/flutter/generated_plugins.cmake
+
+# Python
+**/.venv/
+**/venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+*.pyc
+
+# Environment and secrets
+.env
+.env.*
+*.local
+
+# Coverage and test artifacts
+coverage/
+**/coverage/
+*.lcov
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+*.log
+*.tmp
+*.swp

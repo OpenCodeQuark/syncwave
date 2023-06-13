@@ -1,0 +1,23 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: syncwave-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+
+  signaling-server:
+    build:
+      context: ./services/signaling-server
+    container_name: syncwave-signaling
+    env_file:
+      - ./services/signaling-server/.env.example
+    ports:
+      - '8000:8000'
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+volumes:
+  redis-data:

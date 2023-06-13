@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+
+from ..core.security import generate_room_id, hash_pin, verify_pin
+from ..models.peer import Peer
+from ..models.room import Room
+
+
+class RoomError(Exception):
+    pass
+
+
+class RoomService:
+    def __init__(self, ttl_seconds: int, max_participants: int, pin_hash_secret: str):
+        self._ttl_seconds = ttl_seconds
+        self._max_participants = max_participants
+        self._pin_hash_secret = pin_hash_secret
+        self._rooms: dict[str, Room] = {}
+
+    def create_room(
+        self,
+        *,
+        room_name: str,
+        host_peer_id: str,
+        host_device_name: str,
+        host_platform: str,
+        pin: Optional[str],
+    ) -> Room:
+        room_id = self._next_room_id()
+        now = datetime.now(timezone.utc)
+
+        host_peer = Peer(
+            peerId=host_peer_id,
+            deviceName=host_device_name,
+            platform=host_platform if host_platform in {'android', 'ios'} else 'unknown',
+            role='host',
+        )
+
+        room = Room(
+            roomId=room_id,
+            roomName=room_name,
+            hostId=host_peer_id,
+            pinProtected=bool(pin),
+            pinHash=hash_pin(pin, self._pin_hash_secret) if pin else None,
+            createdAt=now,
+            expiresAt=now + timedelta(seconds=self._ttl_seconds),
+            status='active',
+            participants=[host_peer],
+        )
+
+        self._rooms[room_id] = room
+        return room
+
+    def join_room(self, *, room_id: str, peer: Peer, pin: Optional[str]) -> Room:
+        room = self._get_active_room(room_id)
+
+        if room.pin_protected:
+            if pin is None or room.pin_hash is None:
+                raise RoomError('PIN is required for this room')
+
+            if not verify_pin(pin=pin, hashed_pin=room.pin_hash, secret=self._pin_hash_secret):
+                raise RoomError('Invalid PIN')
+
+        if any(existing.peer_id == peer.peer_id for existing in room.participants):
+            return room
+
+        if len(room.participants) >= self._max_participants:
+            raise RoomError('Room is full')
+
+        room.participants.append(peer)
+        return room
+
+    def leave_room(self, *, room_id: str, peer_id: str) -> Optional[Room]:
+        room = self._rooms.get(room_id)
+        if room is None:
+            return None
+
+        room.participants = [peer for peer in room.participants if peer.peer_id != peer_id]
+
+        if peer_id == room.host_id or not room.participants:
+            room.status = 'closed'
+
+        return room
+
+    def close_room(self, *, room_id: str) -> Room:
+        room = self._get_active_room(room_id)
+        room.status = 'closed'
+        return room
+
+    def get_room(self, room_id: str) -> Optional[Room]:
+        room = self._rooms.get(room_id)
+        if room is None:
+            return None
+
+        if room.expires_at <= datetime.now(timezone.utc):
+            room.status = 'expired'
+        return room
+
+    def _get_active_room(self, room_id: str) -> Room:
+        room = self.get_room(room_id)
+        if room is None:
+            raise RoomError('Room does not exist')
+
+        if room.status != 'active':
+            raise RoomError(f'Room is not active ({room.status})')
+
+        return room
+
+    def _next_room_id(self) -> str:
+        while True:
+            room_id = generate_room_id()
+            if room_id not in self._rooms:
+                return room_id
