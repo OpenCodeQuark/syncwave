@@ -158,3 +158,23 @@ class SignalingService:
             ),
             [],
         )
+
+    def handle_disconnect(self, *, room_id: str, peer_id: str) -> list[EventEnvelope]:
+        room = self._room_service.leave_room(room_id=room_id, peer_id=peer_id)
+        events = [
+            EventEnvelope(
+                type='participant.left',
+                roomId=room_id,
+                peerId=peer_id,
+                payload={'peerId': peer_id},
+            )
+        ]
+        if room is not None and room.status == 'closed':
+            events.append(
+                EventEnvelope(
+                    type='room.closed',
+                    roomId=room_id,
+                    payload={'reason': 'host_left_or_empty_room'},
+                )
+            )
+        return events

@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/route_paths.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
+import '../../../settings/presentation/controllers/remote_server_connection_controller.dart';
 import '../../../settings/presentation/controllers/streaming_settings_controller.dart';
+import '../../../streaming/models/internet_mode_gate.dart';
+import '../../../streaming/models/remote_server_status.dart';
 import '../../../streaming/models/streaming_mode.dart';
 import '../../../streaming/models/streaming_settings.dart';
 import '../../../streaming/providers/streaming_providers.dart';
@@ -32,6 +36,13 @@ class _JoinManualScreenState extends ConsumerState<JoinManualScreen> {
     final settings =
         ref.watch(streamingSettingsControllerProvider).valueOrNull ??
         const StreamingSettings();
+    final remoteStatus =
+        ref.watch(remoteServerConnectionControllerProvider).valueOrNull ??
+        const RemoteServerStatus();
+    final internetJoinReady = isInternetBroadcastAvailable(
+      settings,
+      remoteStatus,
+    );
 
     return PrimaryScaffold(
       title: 'Manual Join',
@@ -52,7 +63,7 @@ class _JoinManualScreenState extends ConsumerState<JoinManualScreen> {
             obscureText: true,
             maxLength: 6,
             decoration: const InputDecoration(
-              labelText: 'PIN (exactly 6 digits, if required)',
+              labelText: 'Room PIN (exactly 6 digits, if required)',
               counterText: '',
             ),
           ),
@@ -75,19 +86,19 @@ class _JoinManualScreenState extends ConsumerState<JoinManualScreen> {
                     .normalizeAndValidateOptional(_pinController.text);
                 final effectivePin = enteredPin ?? parsedTarget.pin;
 
-                if (parsedTarget.pinProtected && effectivePin == null) {
+                if (parsedTarget.roomPinProtected && effectivePin == null) {
                   throw AppException(
-                    'This room requires a 6-digit PIN.',
+                    'This room requires a 6-digit Room PIN.',
                     code: 'pin_required',
                   );
                 }
 
                 if (parsedTarget.mode == StreamingMode.internet) {
-                  final internetReady = settings.internetModeReady;
+                  final internetReady = internetJoinReady;
                   if (!internetReady) {
                     throw AppException(
-                      'Internet streaming is disabled or missing a valid server URL. Configure it in Settings first.',
-                      code: 'internet_mode_not_ready',
+                      'Internet mode requires server connection and successful handshake. Open Settings and connect first.',
+                      code: 'internet_mode_not_connected',
                     );
                   }
                 }
@@ -102,7 +113,7 @@ class _JoinManualScreenState extends ConsumerState<JoinManualScreen> {
                   context,
                 ).showSnackBar(SnackBar(content: Text(endpointSummary)));
 
-                context.push('/room/${target.roomId}');
+                context.push(RoutePaths.roomPath(target.roomId));
               } on FormatException catch (error) {
                 ScaffoldMessenger.of(
                   context,

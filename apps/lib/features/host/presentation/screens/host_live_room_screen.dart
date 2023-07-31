@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
 import '../../../../shared/widgets/syncwave_card.dart';
 import '../../../streaming/models/hosted_session.dart';
-import '../../../streaming/models/room_join_target.dart';
 import '../../../streaming/models/streaming_mode.dart';
 import '../../../streaming/providers/streaming_providers.dart';
 
@@ -23,6 +23,7 @@ class HostLiveRoomScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final config = ref.watch(appConfigProvider);
     final session =
         hostedSession ??
         HostedSession(
@@ -31,30 +32,22 @@ class HostLiveRoomScreen extends ConsumerWidget {
           mode: StreamingMode.local,
           hostAddress: null,
           hostPort: 9000,
-          pinProtected: false,
+          roomPinProtected: false,
         );
 
     final coordinator = ref.read(streamingCoordinatorProvider);
-    final joinLinkService = ref.read(joinLinkServiceProvider);
 
-    String? qrPayload;
-    String? joinUri;
+    String? appQrPayload;
+    String? browserQrPayload;
     try {
-      qrPayload = coordinator.buildQrPayload(session);
-      joinUri = joinLinkService.buildJoinUri(
-        RoomJoinTarget(
-          mode: session.mode,
-          roomId: session.roomId,
-          hostAddress: session.hostAddress,
-          hostPort: session.hostPort,
-          serverUrl: session.serverUrl,
-          pin: session.pin,
-          pinProtected: session.pinProtected,
-        ),
+      appQrPayload = coordinator.buildAppQrPayload(
+        session,
+        appVersion: config.appVersion,
       );
+      browserQrPayload = coordinator.buildBrowserQrPayload(session);
     } on FormatException {
-      qrPayload = null;
-      joinUri = null;
+      appQrPayload = null;
+      browserQrPayload = null;
     }
 
     final endpointDescription = session.mode == StreamingMode.local
@@ -84,29 +77,34 @@ class HostLiveRoomScreen extends ConsumerWidget {
                 Text('Mode: ${session.mode.label}'),
                 Text('Join endpoint: $endpointDescription'),
                 Text(
-                  session.pinProtected
-                      ? 'PIN protection: enabled'
-                      : 'PIN protection: disabled',
+                  session.roomPinProtected
+                      ? 'Room PIN protection: enabled'
+                      : 'Room PIN protection: disabled',
                 ),
                 const SizedBox(height: 8),
-                if (qrPayload != null)
+                const Text(
+                  'App QR (SyncWave app)',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                if (appQrPayload != null)
                   QrImageView(
-                    data: qrPayload,
+                    data: appQrPayload,
                     size: 180,
                     version: QrVersions.auto,
                   )
                 else
                   const Text('Waiting for a valid local network endpoint...'),
                 const Text(
-                  'QR payload carries local join info by default. No external backend is required for Local Mode.',
+                  'App QR uses structured JSON for SyncWave clients.',
                 ),
-                Row(
+                Wrap(
+                  spacing: 8,
                   children: [
                     FilledButton.icon(
-                      onPressed: qrPayload == null
+                      onPressed: appQrPayload == null
                           ? null
                           : () async {
-                              final payload = qrPayload!;
+                              final payload = appQrPayload!;
                               await Clipboard.setData(
                                 ClipboardData(text: payload),
                               );
@@ -115,19 +113,37 @@ class HostLiveRoomScreen extends ConsumerWidget {
                               }
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('QR payload copied'),
+                                  content: Text('App QR payload copied'),
                                 ),
                               );
                             },
                       icon: const Icon(Icons.qr_code),
-                      label: const Text('Copy QR Data'),
+                      label: const Text('Copy App QR Data'),
                     ),
-                    const SizedBox(width: 8),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Browser URL QR (future browser listener support)',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                if (browserQrPayload != null)
+                  QrImageView(
+                    data: browserQrPayload,
+                    size: 180,
+                    version: QrVersions.auto,
+                  ),
+                const Text(
+                  'Room PIN is not embedded in browser URL QR by default.',
+                ),
+                Wrap(
+                  spacing: 8,
+                  children: [
                     OutlinedButton.icon(
-                      onPressed: joinUri == null
+                      onPressed: browserQrPayload == null
                           ? null
                           : () async {
-                              final shareUri = joinUri!;
+                              final shareUri = browserQrPayload!;
                               await Clipboard.setData(
                                 ClipboardData(text: shareUri),
                               );
@@ -136,12 +152,12 @@ class HostLiveRoomScreen extends ConsumerWidget {
                               }
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Join link copied'),
+                                  content: Text('Browser URL copied'),
                                 ),
                               );
                             },
                       icon: const Icon(Icons.copy),
-                      label: const Text('Copy Join Link'),
+                      label: const Text('Copy Browser URL'),
                     ),
                   ],
                 ),
@@ -149,18 +165,16 @@ class HostLiveRoomScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          SyncWaveCard(
+          const SyncWaveCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 8,
               children: [
-                const Text('Capture status: Idle'),
-                const Text('Latency mode: Balanced'),
-                const Text('Connected listeners: 0'),
-                if (session.mode == StreamingMode.local)
-                  const Text('Local Session Server: active'),
-                if (session.mode == StreamingMode.internet)
-                  const Text('Remote Signaling: configured'),
+                Text('Session status: Ready'),
+                Text('Connected listeners: 0'),
+                Text(
+                  'Live audio capture and broadcasting are planned for v2.0.0.',
+                ),
               ],
             ),
           ),

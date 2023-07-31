@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/route_paths.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/permissions/permission_providers.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
+import '../../../settings/presentation/controllers/remote_server_connection_controller.dart';
 import '../../../settings/presentation/controllers/streaming_settings_controller.dart';
 import '../../../streaming/models/audio_source_mode.dart';
+import '../../../streaming/models/internet_mode_gate.dart';
+import '../../../streaming/models/remote_server_status.dart';
 import '../../../streaming/models/streaming_mode.dart';
 import '../../../streaming/models/streaming_settings.dart';
 import '../../../streaming/providers/streaming_providers.dart';
@@ -39,7 +43,13 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
     final settings =
         ref.watch(streamingSettingsControllerProvider).valueOrNull ??
         const StreamingSettings();
-    final internetModeVisible = settings.internetModeReady;
+    final remoteStatus =
+        ref.watch(remoteServerConnectionControllerProvider).valueOrNull ??
+        const RemoteServerStatus();
+    final internetModeVisible = isInternetBroadcastAvailable(
+      settings,
+      remoteStatus,
+    );
 
     if (!internetModeVisible && _selectedMode == StreamingMode.internet) {
       _selectedMode = StreamingMode.local;
@@ -57,6 +67,13 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
           const Text(
             'Connect host and listeners to the same Wi-Fi or hotspot in Local Mode.',
           ),
+          if (!internetModeVisible && settings.internetModeConfigured)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'Internet mode is configured but unavailable until server connection and handshake succeed in Settings.',
+              ),
+            ),
           const SizedBox(height: 16),
           TextField(
             controller: _roomNameController,
@@ -109,7 +126,7 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                 obscureText: true,
                 maxLength: 6,
                 decoration: const InputDecoration(
-                  labelText: 'PIN (exactly 6 digits)',
+                  labelText: 'Room PIN (exactly 6 digits)',
                   counterText: '',
                 ),
               ),
@@ -127,6 +144,10 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
           const SizedBox(height: 8),
           const Text(
             'Microphone broadcast and system audio capture will be enabled in later phases.',
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'v1.0.0 prepares room/session and QR architecture. Live audio broadcasting starts in v2.0.0.',
           ),
           const SizedBox(height: 16),
           const Text('Quality mode'),
@@ -182,7 +203,7 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                             .normalizeAndValidateOptional(_pinController.text);
                         if (pin == null) {
                           throw AppException(
-                            'PIN must be exactly 6 digits.',
+                            'Room PIN must be exactly 6 digits.',
                             code: 'invalid_pin',
                           );
                         }
@@ -210,6 +231,7 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                         pinProtected: _pinEnabled,
                         pin: pin,
                         settings: settings,
+                        remoteServerStatus: remoteStatus,
                       );
 
                       if (!context.mounted) {
@@ -217,7 +239,7 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                       }
 
                       await context.push(
-                        '/host/live/${hostedSession.roomId}',
+                        RoutePaths.hostLivePath(hostedSession.roomId),
                         extra: hostedSession,
                       );
                     } on FormatException catch (error) {

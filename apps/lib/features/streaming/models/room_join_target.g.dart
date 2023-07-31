@@ -14,7 +14,7 @@ _RoomJoinTarget _$RoomJoinTargetFromJson(Map<String, dynamic> json) =>
       hostPort: (json['hostPort'] as num?)?.toInt(),
       serverUrl: json['serverUrl'] as String?,
       pin: json['pin'] as String?,
-      pinProtected: json['pinProtected'] as bool? ?? false,
+      roomPinProtected: json['roomPinProtected'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$RoomJoinTargetToJson(_RoomJoinTarget instance) =>
@@ -25,5 +25,5 @@ Map<String, dynamic> _$RoomJoinTargetToJson(_RoomJoinTarget instance) =>
       'hostPort': instance.hostPort,
       'serverUrl': instance.serverUrl,
       'pin': instance.pin,
-      'pinProtected': instance.pinProtected,
+      'roomPinProtected': instance.roomPinProtected,
     };

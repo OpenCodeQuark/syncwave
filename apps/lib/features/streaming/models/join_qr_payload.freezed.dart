@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$JoinQrPayload {
 
- String get app; int get version;@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) StreamingMode get mode; String get roomId; String? get joinUrl; String? get hostAddress; int? get hostPort; String? get serverUrl; String? get pin; bool get pinProtected;
+ String get app; int get version; String? get appVersion;@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) StreamingMode get mode; String get roomId; String? get joinUrl; String? get hostAddress; int? get hostPort; String? get serverUrl; String? get pin;@JsonKey(readValue: _readRoomPinProtected, fromJson: _boolFromDynamic, name: 'roomPinProtected') bool get roomPinProtected;
 /// Create a copy of JoinQrPayload
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $JoinQrPayloadCopyWith<JoinQrPayload> get copyWith => _$JoinQrPayloadCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is JoinQrPayload&&(identical(other.app, app) || other.app == app)&&(identical(other.version, version) || other.version == version)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.joinUrl, joinUrl) || other.joinUrl == joinUrl)&&(identical(other.hostAddress, hostAddress) || other.hostAddress == hostAddress)&&(identical(other.hostPort, hostPort) || other.hostPort == hostPort)&&(identical(other.serverUrl, serverUrl) || other.serverUrl == serverUrl)&&(identical(other.pin, pin) || other.pin == pin)&&(identical(other.pinProtected, pinProtected) || other.pinProtected == pinProtected));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is JoinQrPayload&&(identical(other.app, app) || other.app == app)&&(identical(other.version, version) || other.version == version)&&(identical(other.appVersion, appVersion) || other.appVersion == appVersion)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.joinUrl, joinUrl) || other.joinUrl == joinUrl)&&(identical(other.hostAddress, hostAddress) || other.hostAddress == hostAddress)&&(identical(other.hostPort, hostPort) || other.hostPort == hostPort)&&(identical(other.serverUrl, serverUrl) || other.serverUrl == serverUrl)&&(identical(other.pin, pin) || other.pin == pin)&&(identical(other.roomPinProtected, roomPinProtected) || other.roomPinProtected == roomPinProtected));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,app,version,mode,roomId,joinUrl,hostAddress,hostPort,serverUrl,pin,pinProtected);
+int get hashCode => Object.hash(runtimeType,app,version,appVersion,mode,roomId,joinUrl,hostAddress,hostPort,serverUrl,pin,roomPinProtected);
 
 @override
 String toString() {
-  return 'JoinQrPayload(app: $app, version: $version, mode: $mode, roomId: $roomId, joinUrl: $joinUrl, hostAddress: $hostAddress, hostPort: $hostPort, serverUrl: $serverUrl, pin: $pin, pinProtected: $pinProtected)';
+  return 'JoinQrPayload(app: $app, version: $version, appVersion: $appVersion, mode: $mode, roomId: $roomId, joinUrl: $joinUrl, hostAddress: $hostAddress, hostPort: $hostPort, serverUrl: $serverUrl, pin: $pin, roomPinProtected: $roomPinProtected)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $JoinQrPayloadCopyWith<$Res>  {
   factory $JoinQrPayloadCopyWith(JoinQrPayload value, $Res Function(JoinQrPayload) _then) = _$JoinQrPayloadCopyWithImpl;
 @useResult
 $Res call({
- String app, int version,@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) StreamingMode mode, String roomId, String? joinUrl, String? hostAddress, int? hostPort, String? serverUrl, String? pin, bool pinProtected
+ String app, int version, String? appVersion,@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) StreamingMode mode, String roomId, String? joinUrl, String? hostAddress, int? hostPort, String? serverUrl, String? pin,@JsonKey(readValue: _readRoomPinProtected, fromJson: _boolFromDynamic, name: 'roomPinProtected') bool roomPinProtected
 });
 
 
@@ -65,18 +65,19 @@ class _$JoinQrPayloadCopyWithImpl<$Res>
 
 /// Create a copy of JoinQrPayload
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? app = null,Object? version = null,Object? mode = null,Object? roomId = null,Object? joinUrl = freezed,Object? hostAddress = freezed,Object? hostPort = freezed,Object? serverUrl = freezed,Object? pin = freezed,Object? pinProtected = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? app = null,Object? version = null,Object? appVersion = freezed,Object? mode = null,Object? roomId = null,Object? joinUrl = freezed,Object? hostAddress = freezed,Object? hostPort = freezed,Object? serverUrl = freezed,Object? pin = freezed,Object? roomPinProtected = null,}) {
   return _then(_self.copyWith(
 app: null == app ? _self.app : app // ignore: cast_nullable_to_non_nullable
 as String,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as int,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
+as int,appVersion: freezed == appVersion ? _self.appVersion : appVersion // ignore: cast_nullable_to_non_nullable
+as String?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as StreamingMode,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
 as String,joinUrl: freezed == joinUrl ? _self.joinUrl : joinUrl // ignore: cast_nullable_to_non_nullable
 as String?,hostAddress: freezed == hostAddress ? _self.hostAddress : hostAddress // ignore: cast_nullable_to_non_nullable
 as String?,hostPort: freezed == hostPort ? _self.hostPort : hostPort // ignore: cast_nullable_to_non_nullable
 as int?,serverUrl: freezed == serverUrl ? _self.serverUrl : serverUrl // ignore: cast_nullable_to_non_nullable
 as String?,pin: freezed == pin ? _self.pin : pin // ignore: cast_nullable_to_non_nullable
-as String?,pinProtected: null == pinProtected ? _self.pinProtected : pinProtected // ignore: cast_nullable_to_non_nullable
+as String?,roomPinProtected: null == roomPinProtected ? _self.roomPinProtected : roomPinProtected // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -162,10 +163,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String app,  int version, @JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)  StreamingMode mode,  String roomId,  String? joinUrl,  String? hostAddress,  int? hostPort,  String? serverUrl,  String? pin,  bool pinProtected)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String app,  int version,  String? appVersion, @JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)  StreamingMode mode,  String roomId,  String? joinUrl,  String? hostAddress,  int? hostPort,  String? serverUrl,  String? pin, @JsonKey(readValue: _readRoomPinProtected, fromJson: _boolFromDynamic, name: 'roomPinProtected')  bool roomPinProtected)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _JoinQrPayload() when $default != null:
-return $default(_that.app,_that.version,_that.mode,_that.roomId,_that.joinUrl,_that.hostAddress,_that.hostPort,_that.serverUrl,_that.pin,_that.pinProtected);case _:
+return $default(_that.app,_that.version,_that.appVersion,_that.mode,_that.roomId,_that.joinUrl,_that.hostAddress,_that.hostPort,_that.serverUrl,_that.pin,_that.roomPinProtected);case _:
   return orElse();
 
 }
@@ -183,10 +184,10 @@ return $default(_that.app,_that.version,_that.mode,_that.roomId,_that.joinUrl,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String app,  int version, @JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)  StreamingMode mode,  String roomId,  String? joinUrl,  String? hostAddress,  int? hostPort,  String? serverUrl,  String? pin,  bool pinProtected)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String app,  int version,  String? appVersion, @JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)  StreamingMode mode,  String roomId,  String? joinUrl,  String? hostAddress,  int? hostPort,  String? serverUrl,  String? pin, @JsonKey(readValue: _readRoomPinProtected, fromJson: _boolFromDynamic, name: 'roomPinProtected')  bool roomPinProtected)  $default,) {final _that = this;
 switch (_that) {
 case _JoinQrPayload():
-return $default(_that.app,_that.version,_that.mode,_that.roomId,_that.joinUrl,_that.hostAddress,_that.hostPort,_that.serverUrl,_that.pin,_that.pinProtected);case _:
+return $default(_that.app,_that.version,_that.appVersion,_that.mode,_that.roomId,_that.joinUrl,_that.hostAddress,_that.hostPort,_that.serverUrl,_that.pin,_that.roomPinProtected);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +204,10 @@ return $default(_that.app,_that.version,_that.mode,_that.roomId,_that.joinUrl,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String app,  int version, @JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)  StreamingMode mode,  String roomId,  String? joinUrl,  String? hostAddress,  int? hostPort,  String? serverUrl,  String? pin,  bool pinProtected)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String app,  int version,  String? appVersion, @JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)  StreamingMode mode,  String roomId,  String? joinUrl,  String? hostAddress,  int? hostPort,  String? serverUrl,  String? pin, @JsonKey(readValue: _readRoomPinProtected, fromJson: _boolFromDynamic, name: 'roomPinProtected')  bool roomPinProtected)?  $default,) {final _that = this;
 switch (_that) {
 case _JoinQrPayload() when $default != null:
-return $default(_that.app,_that.version,_that.mode,_that.roomId,_that.joinUrl,_that.hostAddress,_that.hostPort,_that.serverUrl,_that.pin,_that.pinProtected);case _:
+return $default(_that.app,_that.version,_that.appVersion,_that.mode,_that.roomId,_that.joinUrl,_that.hostAddress,_that.hostPort,_that.serverUrl,_that.pin,_that.roomPinProtected);case _:
   return null;
 
 }
@@ -218,11 +219,12 @@ return $default(_that.app,_that.version,_that.mode,_that.roomId,_that.joinUrl,_t
 @JsonSerializable()
 
 class _JoinQrPayload implements JoinQrPayload {
-  const _JoinQrPayload({this.app = 'syncwave', this.version = 1, @JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) required this.mode, required this.roomId, this.joinUrl, this.hostAddress, this.hostPort, this.serverUrl, this.pin, this.pinProtected = false});
+  const _JoinQrPayload({this.app = 'syncwave', this.version = 1, this.appVersion, @JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) required this.mode, required this.roomId, this.joinUrl, this.hostAddress, this.hostPort, this.serverUrl, this.pin, @JsonKey(readValue: _readRoomPinProtected, fromJson: _boolFromDynamic, name: 'roomPinProtected') this.roomPinProtected = false});
   factory _JoinQrPayload.fromJson(Map<String, dynamic> json) => _$JoinQrPayloadFromJson(json);
 
 @override@JsonKey() final  String app;
 @override@JsonKey() final  int version;
+@override final  String? appVersion;
 @override@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) final  StreamingMode mode;
 @override final  String roomId;
 @override final  String? joinUrl;
@@ -230,7 +232,7 @@ class _JoinQrPayload implements JoinQrPayload {
 @override final  int? hostPort;
 @override final  String? serverUrl;
 @override final  String? pin;
-@override@JsonKey() final  bool pinProtected;
+@override@JsonKey(readValue: _readRoomPinProtected, fromJson: _boolFromDynamic, name: 'roomPinProtected') final  bool roomPinProtected;
 
 /// Create a copy of JoinQrPayload
 /// with the given fields replaced by the non-null parameter values.
@@ -245,16 +247,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _JoinQrPayload&&(identical(other.app, app) || other.app == app)&&(identical(other.version, version) || other.version == version)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.joinUrl, joinUrl) || other.joinUrl == joinUrl)&&(identical(other.hostAddress, hostAddress) || other.hostAddress == hostAddress)&&(identical(other.hostPort, hostPort) || other.hostPort == hostPort)&&(identical(other.serverUrl, serverUrl) || other.serverUrl == serverUrl)&&(identical(other.pin, pin) || other.pin == pin)&&(identical(other.pinProtected, pinProtected) || other.pinProtected == pinProtected));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _JoinQrPayload&&(identical(other.app, app) || other.app == app)&&(identical(other.version, version) || other.version == version)&&(identical(other.appVersion, appVersion) || other.appVersion == appVersion)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.joinUrl, joinUrl) || other.joinUrl == joinUrl)&&(identical(other.hostAddress, hostAddress) || other.hostAddress == hostAddress)&&(identical(other.hostPort, hostPort) || other.hostPort == hostPort)&&(identical(other.serverUrl, serverUrl) || other.serverUrl == serverUrl)&&(identical(other.pin, pin) || other.pin == pin)&&(identical(other.roomPinProtected, roomPinProtected) || other.roomPinProtected == roomPinProtected));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,app,version,mode,roomId,joinUrl,hostAddress,hostPort,serverUrl,pin,pinProtected);
+int get hashCode => Object.hash(runtimeType,app,version,appVersion,mode,roomId,joinUrl,hostAddress,hostPort,serverUrl,pin,roomPinProtected);
 
 @override
 String toString() {
-  return 'JoinQrPayload(app: $app, version: $version, mode: $mode, roomId: $roomId, joinUrl: $joinUrl, hostAddress: $hostAddress, hostPort: $hostPort, serverUrl: $serverUrl, pin: $pin, pinProtected: $pinProtected)';
+  return 'JoinQrPayload(app: $app, version: $version, appVersion: $appVersion, mode: $mode, roomId: $roomId, joinUrl: $joinUrl, hostAddress: $hostAddress, hostPort: $hostPort, serverUrl: $serverUrl, pin: $pin, roomPinProtected: $roomPinProtected)';
 }
 
 
@@ -265,7 +267,7 @@ abstract mixin class _$JoinQrPayloadCopyWith<$Res> implements $JoinQrPayloadCopy
   factory _$JoinQrPayloadCopyWith(_JoinQrPayload value, $Res Function(_JoinQrPayload) _then) = __$JoinQrPayloadCopyWithImpl;
 @override @useResult
 $Res call({
- String app, int version,@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) StreamingMode mode, String roomId, String? joinUrl, String? hostAddress, int? hostPort, String? serverUrl, String? pin, bool pinProtected
+ String app, int version, String? appVersion,@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) StreamingMode mode, String roomId, String? joinUrl, String? hostAddress, int? hostPort, String? serverUrl, String? pin,@JsonKey(readValue: _readRoomPinProtected, fromJson: _boolFromDynamic, name: 'roomPinProtected') bool roomPinProtected
 });
 
 
@@ -282,18 +284,19 @@ class __$JoinQrPayloadCopyWithImpl<$Res>
 
 /// Create a copy of JoinQrPayload
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? app = null,Object? version = null,Object? mode = null,Object? roomId = null,Object? joinUrl = freezed,Object? hostAddress = freezed,Object? hostPort = freezed,Object? serverUrl = freezed,Object? pin = freezed,Object? pinProtected = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? app = null,Object? version = null,Object? appVersion = freezed,Object? mode = null,Object? roomId = null,Object? joinUrl = freezed,Object? hostAddress = freezed,Object? hostPort = freezed,Object? serverUrl = freezed,Object? pin = freezed,Object? roomPinProtected = null,}) {
   return _then(_JoinQrPayload(
 app: null == app ? _self.app : app // ignore: cast_nullable_to_non_nullable
 as String,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as int,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
+as int,appVersion: freezed == appVersion ? _self.appVersion : appVersion // ignore: cast_nullable_to_non_nullable
+as String?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as StreamingMode,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
 as String,joinUrl: freezed == joinUrl ? _self.joinUrl : joinUrl // ignore: cast_nullable_to_non_nullable
 as String?,hostAddress: freezed == hostAddress ? _self.hostAddress : hostAddress // ignore: cast_nullable_to_non_nullable
 as String?,hostPort: freezed == hostPort ? _self.hostPort : hostPort // ignore: cast_nullable_to_non_nullable
 as int?,serverUrl: freezed == serverUrl ? _self.serverUrl : serverUrl // ignore: cast_nullable_to_non_nullable
 as String?,pin: freezed == pin ? _self.pin : pin // ignore: cast_nullable_to_non_nullable
-as String?,pinProtected: null == pinProtected ? _self.pinProtected : pinProtected // ignore: cast_nullable_to_non_nullable
+as String?,roomPinProtected: null == roomPinProtected ? _self.roomPinProtected : roomPinProtected // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

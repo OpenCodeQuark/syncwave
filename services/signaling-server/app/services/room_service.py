@@ -98,6 +98,14 @@ class RoomService:
             room.status = 'expired'
         return room
 
+    def active_room_count(self) -> int:
+        count = 0
+        for room_id in list(self._rooms.keys()):
+            room = self.get_room(room_id)
+            if room is not None and room.status == 'active':
+                count += 1
+        return count
+
     def _get_active_room(self, room_id: str) -> Room:
         room = self.get_room(room_id)
         if room is None:

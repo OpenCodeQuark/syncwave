@@ -23,12 +23,21 @@ void main() {
 
     test('parses internet join URL with room query param', () {
       final target = service.parseManualJoinInput(
-        'https://server.example.com/stream/join?room=SW-8FD2-KQ',
+        'https://your-server.example.com/stream/join?room=SW-8FD2-KQ',
       );
 
       expect(target.mode, StreamingMode.internet);
       expect(target.roomId, 'SW-8FD2-KQ');
       expect(target.serverUrl, isNotNull);
+    });
+
+    test('parses join URL with roomId query parameter', () {
+      final target = service.parseManualJoinInput(
+        'https://your-server.example.com/stream/join?roomId=SW-8FD2-KQ',
+      );
+
+      expect(target.mode, StreamingMode.internet);
+      expect(target.roomId, 'SW-8FD2-KQ');
     });
 
     test('parses join URL without room into placeholder room id', () {

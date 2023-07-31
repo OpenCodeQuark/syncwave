@@ -4,7 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
+import '../../../settings/presentation/controllers/remote_server_connection_controller.dart';
 import '../../../settings/presentation/controllers/streaming_settings_controller.dart';
+import '../../../streaming/models/internet_mode_gate.dart';
+import '../../../streaming/models/remote_server_status.dart';
 import '../../../streaming/models/streaming_settings.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -15,6 +18,13 @@ class HomeScreen extends ConsumerWidget {
     final settings =
         ref.watch(streamingSettingsControllerProvider).valueOrNull ??
         const StreamingSettings();
+    final remoteStatus =
+        ref.watch(remoteServerConnectionControllerProvider).valueOrNull ??
+        const RemoteServerStatus();
+    final internetBroadcastReady = isInternetBroadcastAvailable(
+      settings,
+      remoteStatus,
+    );
 
     return PrimaryScaffold(
       title: 'SyncWave',
@@ -30,8 +40,8 @@ class HomeScreen extends ConsumerWidget {
         spacing: 12,
         children: [
           Text(
-            settings.internetModeReady
-                ? 'Mode: Local-first (Internet optional ready)'
+            internetBroadcastReady
+                ? 'Mode: Local-first (Internet signaling connected)'
                 : 'Mode: Local-first (No external server required)',
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),

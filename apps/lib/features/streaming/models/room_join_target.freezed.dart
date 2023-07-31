@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$RoomJoinTarget {
 
-@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) StreamingMode get mode; String get roomId; String? get hostAddress; int? get hostPort; String? get serverUrl; String? get pin; bool get pinProtected;
+@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) StreamingMode get mode; String get roomId; String? get hostAddress; int? get hostPort; String? get serverUrl; String? get pin; bool get roomPinProtected;
 /// Create a copy of RoomJoinTarget
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $RoomJoinTargetCopyWith<RoomJoinTarget> get copyWith => _$RoomJoinTargetCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoomJoinTarget&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.hostAddress, hostAddress) || other.hostAddress == hostAddress)&&(identical(other.hostPort, hostPort) || other.hostPort == hostPort)&&(identical(other.serverUrl, serverUrl) || other.serverUrl == serverUrl)&&(identical(other.pin, pin) || other.pin == pin)&&(identical(other.pinProtected, pinProtected) || other.pinProtected == pinProtected));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoomJoinTarget&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.hostAddress, hostAddress) || other.hostAddress == hostAddress)&&(identical(other.hostPort, hostPort) || other.hostPort == hostPort)&&(identical(other.serverUrl, serverUrl) || other.serverUrl == serverUrl)&&(identical(other.pin, pin) || other.pin == pin)&&(identical(other.roomPinProtected, roomPinProtected) || other.roomPinProtected == roomPinProtected));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mode,roomId,hostAddress,hostPort,serverUrl,pin,pinProtected);
+int get hashCode => Object.hash(runtimeType,mode,roomId,hostAddress,hostPort,serverUrl,pin,roomPinProtected);
 
 @override
 String toString() {
-  return 'RoomJoinTarget(mode: $mode, roomId: $roomId, hostAddress: $hostAddress, hostPort: $hostPort, serverUrl: $serverUrl, pin: $pin, pinProtected: $pinProtected)';
+  return 'RoomJoinTarget(mode: $mode, roomId: $roomId, hostAddress: $hostAddress, hostPort: $hostPort, serverUrl: $serverUrl, pin: $pin, roomPinProtected: $roomPinProtected)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $RoomJoinTargetCopyWith<$Res>  {
   factory $RoomJoinTargetCopyWith(RoomJoinTarget value, $Res Function(RoomJoinTarget) _then) = _$RoomJoinTargetCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) StreamingMode mode, String roomId, String? hostAddress, int? hostPort, String? serverUrl, String? pin, bool pinProtected
+@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) StreamingMode mode, String roomId, String? hostAddress, int? hostPort, String? serverUrl, String? pin, bool roomPinProtected
 });
 
 
@@ -65,7 +65,7 @@ class _$RoomJoinTargetCopyWithImpl<$Res>
 
 /// Create a copy of RoomJoinTarget
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? mode = null,Object? roomId = null,Object? hostAddress = freezed,Object? hostPort = freezed,Object? serverUrl = freezed,Object? pin = freezed,Object? pinProtected = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? mode = null,Object? roomId = null,Object? hostAddress = freezed,Object? hostPort = freezed,Object? serverUrl = freezed,Object? pin = freezed,Object? roomPinProtected = null,}) {
   return _then(_self.copyWith(
 mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as StreamingMode,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
@@ -73,7 +73,7 @@ as String,hostAddress: freezed == hostAddress ? _self.hostAddress : hostAddress 
 as String?,hostPort: freezed == hostPort ? _self.hostPort : hostPort // ignore: cast_nullable_to_non_nullable
 as int?,serverUrl: freezed == serverUrl ? _self.serverUrl : serverUrl // ignore: cast_nullable_to_non_nullable
 as String?,pin: freezed == pin ? _self.pin : pin // ignore: cast_nullable_to_non_nullable
-as String?,pinProtected: null == pinProtected ? _self.pinProtected : pinProtected // ignore: cast_nullable_to_non_nullable
+as String?,roomPinProtected: null == roomPinProtected ? _self.roomPinProtected : roomPinProtected // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -159,10 +159,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)  StreamingMode mode,  String roomId,  String? hostAddress,  int? hostPort,  String? serverUrl,  String? pin,  bool pinProtected)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)  StreamingMode mode,  String roomId,  String? hostAddress,  int? hostPort,  String? serverUrl,  String? pin,  bool roomPinProtected)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _RoomJoinTarget() when $default != null:
-return $default(_that.mode,_that.roomId,_that.hostAddress,_that.hostPort,_that.serverUrl,_that.pin,_that.pinProtected);case _:
+return $default(_that.mode,_that.roomId,_that.hostAddress,_that.hostPort,_that.serverUrl,_that.pin,_that.roomPinProtected);case _:
   return orElse();
 
 }
@@ -180,10 +180,10 @@ return $default(_that.mode,_that.roomId,_that.hostAddress,_that.hostPort,_that.s
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)  StreamingMode mode,  String roomId,  String? hostAddress,  int? hostPort,  String? serverUrl,  String? pin,  bool pinProtected)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)  StreamingMode mode,  String roomId,  String? hostAddress,  int? hostPort,  String? serverUrl,  String? pin,  bool roomPinProtected)  $default,) {final _that = this;
 switch (_that) {
 case _RoomJoinTarget():
-return $default(_that.mode,_that.roomId,_that.hostAddress,_that.hostPort,_that.serverUrl,_that.pin,_that.pinProtected);case _:
+return $default(_that.mode,_that.roomId,_that.hostAddress,_that.hostPort,_that.serverUrl,_that.pin,_that.roomPinProtected);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -200,10 +200,10 @@ return $default(_that.mode,_that.roomId,_that.hostAddress,_that.hostPort,_that.s
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)  StreamingMode mode,  String roomId,  String? hostAddress,  int? hostPort,  String? serverUrl,  String? pin,  bool pinProtected)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)  StreamingMode mode,  String roomId,  String? hostAddress,  int? hostPort,  String? serverUrl,  String? pin,  bool roomPinProtected)?  $default,) {final _that = this;
 switch (_that) {
 case _RoomJoinTarget() when $default != null:
-return $default(_that.mode,_that.roomId,_that.hostAddress,_that.hostPort,_that.serverUrl,_that.pin,_that.pinProtected);case _:
+return $default(_that.mode,_that.roomId,_that.hostAddress,_that.hostPort,_that.serverUrl,_that.pin,_that.roomPinProtected);case _:
   return null;
 
 }
@@ -215,7 +215,7 @@ return $default(_that.mode,_that.roomId,_that.hostAddress,_that.hostPort,_that.s
 @JsonSerializable()
 
 class _RoomJoinTarget implements RoomJoinTarget {
-  const _RoomJoinTarget({@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) required this.mode, required this.roomId, this.hostAddress, this.hostPort, this.serverUrl, this.pin, this.pinProtected = false});
+  const _RoomJoinTarget({@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) required this.mode, required this.roomId, this.hostAddress, this.hostPort, this.serverUrl, this.pin, this.roomPinProtected = false});
   factory _RoomJoinTarget.fromJson(Map<String, dynamic> json) => _$RoomJoinTargetFromJson(json);
 
 @override@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) final  StreamingMode mode;
@@ -224,7 +224,7 @@ class _RoomJoinTarget implements RoomJoinTarget {
 @override final  int? hostPort;
 @override final  String? serverUrl;
 @override final  String? pin;
-@override@JsonKey() final  bool pinProtected;
+@override@JsonKey() final  bool roomPinProtected;
 
 /// Create a copy of RoomJoinTarget
 /// with the given fields replaced by the non-null parameter values.
@@ -239,16 +239,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RoomJoinTarget&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.hostAddress, hostAddress) || other.hostAddress == hostAddress)&&(identical(other.hostPort, hostPort) || other.hostPort == hostPort)&&(identical(other.serverUrl, serverUrl) || other.serverUrl == serverUrl)&&(identical(other.pin, pin) || other.pin == pin)&&(identical(other.pinProtected, pinProtected) || other.pinProtected == pinProtected));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RoomJoinTarget&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.hostAddress, hostAddress) || other.hostAddress == hostAddress)&&(identical(other.hostPort, hostPort) || other.hostPort == hostPort)&&(identical(other.serverUrl, serverUrl) || other.serverUrl == serverUrl)&&(identical(other.pin, pin) || other.pin == pin)&&(identical(other.roomPinProtected, roomPinProtected) || other.roomPinProtected == roomPinProtected));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mode,roomId,hostAddress,hostPort,serverUrl,pin,pinProtected);
+int get hashCode => Object.hash(runtimeType,mode,roomId,hostAddress,hostPort,serverUrl,pin,roomPinProtected);
 
 @override
 String toString() {
-  return 'RoomJoinTarget(mode: $mode, roomId: $roomId, hostAddress: $hostAddress, hostPort: $hostPort, serverUrl: $serverUrl, pin: $pin, pinProtected: $pinProtected)';
+  return 'RoomJoinTarget(mode: $mode, roomId: $roomId, hostAddress: $hostAddress, hostPort: $hostPort, serverUrl: $serverUrl, pin: $pin, roomPinProtected: $roomPinProtected)';
 }
 
 
@@ -259,7 +259,7 @@ abstract mixin class _$RoomJoinTargetCopyWith<$Res> implements $RoomJoinTargetCo
   factory _$RoomJoinTargetCopyWith(_RoomJoinTarget value, $Res Function(_RoomJoinTarget) _then) = __$RoomJoinTargetCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) StreamingMode mode, String roomId, String? hostAddress, int? hostPort, String? serverUrl, String? pin, bool pinProtected
+@JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson) StreamingMode mode, String roomId, String? hostAddress, int? hostPort, String? serverUrl, String? pin, bool roomPinProtected
 });
 
 
@@ -276,7 +276,7 @@ class __$RoomJoinTargetCopyWithImpl<$Res>
 
 /// Create a copy of RoomJoinTarget
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? mode = null,Object? roomId = null,Object? hostAddress = freezed,Object? hostPort = freezed,Object? serverUrl = freezed,Object? pin = freezed,Object? pinProtected = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? mode = null,Object? roomId = null,Object? hostAddress = freezed,Object? hostPort = freezed,Object? serverUrl = freezed,Object? pin = freezed,Object? roomPinProtected = null,}) {
   return _then(_RoomJoinTarget(
 mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as StreamingMode,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
@@ -284,7 +284,7 @@ as String,hostAddress: freezed == hostAddress ? _self.hostAddress : hostAddress 
 as String?,hostPort: freezed == hostPort ? _self.hostPort : hostPort // ignore: cast_nullable_to_non_nullable
 as int?,serverUrl: freezed == serverUrl ? _self.serverUrl : serverUrl // ignore: cast_nullable_to_non_nullable
 as String?,pin: freezed == pin ? _self.pin : pin // ignore: cast_nullable_to_non_nullable
-as String?,pinProtected: null == pinProtected ? _self.pinProtected : pinProtected // ignore: cast_nullable_to_non_nullable
+as String?,roomPinProtected: null == roomPinProtected ? _self.roomPinProtected : roomPinProtected // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

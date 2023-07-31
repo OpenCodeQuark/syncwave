@@ -10,6 +10,7 @@ _JoinQrPayload _$JoinQrPayloadFromJson(Map<String, dynamic> json) =>
     _JoinQrPayload(
       app: json['app'] as String? ?? 'syncwave',
       version: (json['version'] as num?)?.toInt() ?? 1,
+      appVersion: json['appVersion'] as String?,
       mode: streamingModeFromJson(json['mode'] as String),
       roomId: json['roomId'] as String,
       joinUrl: json['joinUrl'] as String?,
@@ -17,13 +18,16 @@ _JoinQrPayload _$JoinQrPayloadFromJson(Map<String, dynamic> json) =>
       hostPort: (json['hostPort'] as num?)?.toInt(),
       serverUrl: json['serverUrl'] as String?,
       pin: json['pin'] as String?,
-      pinProtected: json['pinProtected'] as bool? ?? false,
+      roomPinProtected: _readRoomPinProtected(json, 'roomPinProtected') == null
+          ? false
+          : _boolFromDynamic(_readRoomPinProtected(json, 'roomPinProtected')),
     );
 
 Map<String, dynamic> _$JoinQrPayloadToJson(_JoinQrPayload instance) =>
     <String, dynamic>{
       'app': instance.app,
       'version': instance.version,
+      'appVersion': instance.appVersion,
       'mode': streamingModeToJson(instance.mode),
       'roomId': instance.roomId,
       'joinUrl': instance.joinUrl,
@@ -31,5 +35,5 @@ Map<String, dynamic> _$JoinQrPayloadToJson(_JoinQrPayload instance) =>
       'hostPort': instance.hostPort,
       'serverUrl': instance.serverUrl,
       'pin': instance.pin,
-      'pinProtected': instance.pinProtected,
+      'roomPinProtected': instance.roomPinProtected,
     };

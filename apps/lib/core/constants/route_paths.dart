@@ -12,4 +12,8 @@ class RoutePaths {
   static const room = '/room/:roomId';
   static const settings = '/settings';
   static const debugNetwork = '/debug/network';
+
+  static String hostLivePath(String roomId) => '/host/live/$roomId';
+
+  static String roomPath(String roomId) => '/room/$roomId';
 }

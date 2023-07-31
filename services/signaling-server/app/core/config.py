@@ -5,9 +5,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = 'SyncWave Signaling Server'
+    app_version: str = '1.0.0'
     app_env: str = 'development'
     app_host: str = '0.0.0.0'
     app_port: int = 8000
+    websocket_path: str = '/ws'
+    protocol_version: str = '1'
+    require_server_connection_pin: bool = False
+    server_connection_pin: str = ''
     redis_url: str = 'redis://redis:6379/0'
     room_ttl_seconds: int = 21600
     max_participants_per_room: int = 20

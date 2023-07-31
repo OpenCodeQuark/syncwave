@@ -16,7 +16,7 @@ abstract class HostedSession with _$HostedSession {
     int? hostPort,
     String? serverUrl,
     String? pin,
-    @Default(false) bool pinProtected,
+    @Default(false) bool roomPinProtected,
   }) = _HostedSession;
 
   factory HostedSession.fromJson(Map<String, dynamic> json) =>

@@ -32,6 +32,9 @@ class RoomScreen extends StatelessWidget {
                 const Text('Buffering state: Idle'),
                 const Text('Estimated latency: -- ms'),
                 const Text('Drift estimate: -- ms'),
+                const Text(
+                  'Live audio playback is planned for v2.0.0.',
+                ),
               ],
             ),
           ),

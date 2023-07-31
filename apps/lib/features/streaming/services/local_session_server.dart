@@ -30,7 +30,7 @@ class LocalSessionServer {
       mode: StreamingMode.local,
       hostAddress: network.address,
       hostPort: defaultPort,
-      pinProtected: pinProtected,
+      roomPinProtected: pinProtected,
       pin: pin,
     );
 

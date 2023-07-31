@@ -57,3 +57,9 @@ class ConnectionManager:
     def disconnect(self, *, peer_id: str) -> Optional[str]:
         self._connections.pop(peer_id, None)
         return self.unregister_peer_room(peer_id=peer_id)
+
+    def active_connection_count(self) -> int:
+        return len(self._connections)
+
+    def active_room_count(self) -> int:
+        return len(self._room_peers)

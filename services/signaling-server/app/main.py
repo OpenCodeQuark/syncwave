@@ -37,6 +37,7 @@ def create_app() -> FastAPI:
     websocket_handler = WebSocketEventHandler(
         manager=connection_manager,
         signaling=signaling_service,
+        settings=settings,
     )
 
     @asynccontextmanager
@@ -53,7 +54,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title=settings.app_name,
-        version='0.1.0',
+        version=settings.app_version,
         lifespan=lifespan,
     )
 
@@ -67,9 +68,16 @@ def create_app() -> FastAPI:
     )
 
     app.state.room_service = room_service
+    app.state.redis_service = redis_service
+    app.state.connection_manager = connection_manager
     app.include_router(health_router)
     app.include_router(rooms_router)
-    app.include_router(build_websocket_router(websocket_handler))
+    app.include_router(
+        build_websocket_router(
+            websocket_handler,
+            websocket_path=settings.websocket_path,
+        )
+    )
 
     return app
 

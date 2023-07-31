@@ -11,10 +11,13 @@ _StreamingSettings _$StreamingSettingsFromJson(Map<String, dynamic> json) =>
       internetStreamingEnabled:
           json['internetStreamingEnabled'] as bool? ?? false,
       signalingServerUrl: json['signalingServerUrl'] as String?,
+      serverConnectionPinConfigured:
+          json['serverConnectionPinConfigured'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$StreamingSettingsToJson(_StreamingSettings instance) =>
     <String, dynamic>{
       'internetStreamingEnabled': instance.internetStreamingEnabled,
       'signalingServerUrl': instance.signalingServerUrl,
+      'serverConnectionPinConfigured': instance.serverConnectionPinConfigured,
     };

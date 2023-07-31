@@ -8,6 +8,7 @@ abstract class StreamingSettings with _$StreamingSettings {
   const factory StreamingSettings({
     @Default(false) bool internetStreamingEnabled,
     String? signalingServerUrl,
+    @Default(false) bool serverConnectionPinConfigured,
   }) = _StreamingSettings;
 
   factory StreamingSettings.fromJson(Map<String, dynamic> json) =>
@@ -17,5 +18,5 @@ abstract class StreamingSettings with _$StreamingSettings {
 extension StreamingSettingsX on StreamingSettings {
   bool get hasServerUrl => signalingServerUrl?.trim().isNotEmpty ?? false;
 
-  bool get internetModeReady => internetStreamingEnabled && hasServerUrl;
+  bool get internetModeConfigured => internetStreamingEnabled && hasServerUrl;
 }

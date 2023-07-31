@@ -15,7 +15,7 @@ abstract class RoomJoinTarget with _$RoomJoinTarget {
     int? hostPort,
     String? serverUrl,
     String? pin,
-    @Default(false) bool pinProtected,
+    @Default(false) bool roomPinProtected,
   }) = _RoomJoinTarget;
 
   factory RoomJoinTarget.fromJson(Map<String, dynamic> json) =>

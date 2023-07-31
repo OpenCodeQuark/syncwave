@@ -40,6 +40,23 @@ class ServerUrlService {
     return normalized.toString();
   }
 
+  String deriveStatusUrl(String normalizedWebSocketUrl) {
+    final parsed = Uri.tryParse(normalizedWebSocketUrl.trim());
+    if (parsed == null || parsed.scheme.isEmpty || parsed.host.isEmpty) {
+      throw const FormatException('Invalid normalized WebSocket URL.');
+    }
+
+    final httpScheme = parsed.scheme == 'wss' ? 'https' : 'http';
+    return parsed
+        .replace(
+          scheme: httpScheme,
+          path: '/status',
+          query: null,
+          fragment: null,
+        )
+        .toString();
+  }
+
   String _normalizeScheme(String scheme) {
     final lower = scheme.toLowerCase();
     if (!_supportedSchemes.contains(lower)) {

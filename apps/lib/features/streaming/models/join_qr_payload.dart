@@ -5,11 +5,18 @@ import 'streaming_mode.dart';
 part 'join_qr_payload.freezed.dart';
 part 'join_qr_payload.g.dart';
 
+Object? _readRoomPinProtected(Map<dynamic, dynamic> json, String key) {
+  return json[key] ?? json['pinProtected'];
+}
+
+bool _boolFromDynamic(Object? value) => value == true;
+
 @freezed
 abstract class JoinQrPayload with _$JoinQrPayload {
   const factory JoinQrPayload({
     @Default('syncwave') String app,
     @Default(1) int version,
+    String? appVersion,
     @JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)
     required StreamingMode mode,
     required String roomId,
@@ -18,7 +25,13 @@ abstract class JoinQrPayload with _$JoinQrPayload {
     int? hostPort,
     String? serverUrl,
     String? pin,
-    @Default(false) bool pinProtected,
+    @JsonKey(
+      readValue: _readRoomPinProtected,
+      fromJson: _boolFromDynamic,
+      name: 'roomPinProtected',
+    )
+    @Default(false)
+    bool roomPinProtected,
   }) = _JoinQrPayload;
 
   factory JoinQrPayload.fromJson(Map<String, dynamic> json) =>

@@ -4,7 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
+import '../../../settings/presentation/controllers/remote_server_connection_controller.dart';
 import '../../../settings/presentation/controllers/streaming_settings_controller.dart';
+import '../../../streaming/models/internet_mode_gate.dart';
+import '../../../streaming/models/remote_server_status.dart';
 import '../../../streaming/models/streaming_settings.dart';
 
 class JoinScreen extends ConsumerWidget {
@@ -15,7 +18,13 @@ class JoinScreen extends ConsumerWidget {
     final settings =
         ref.watch(streamingSettingsControllerProvider).valueOrNull ??
         const StreamingSettings();
-    final internetEnabled = settings.internetModeReady;
+    final remoteStatus =
+        ref.watch(remoteServerConnectionControllerProvider).valueOrNull ??
+        const RemoteServerStatus();
+    final internetEnabled = isInternetBroadcastAvailable(
+      settings,
+      remoteStatus,
+    );
 
     return PrimaryScaffold(
       title: 'Join Session',

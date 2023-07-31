@@ -1,22 +1,20 @@
 import '../../../core/errors/app_exception.dart';
 import '../models/hosted_session.dart';
+import '../models/remote_server_status.dart';
+import '../models/room_join_target.dart';
 import '../models/streaming_mode.dart';
 import '../models/streaming_settings.dart';
 import 'join_link_service.dart';
 import 'local_session_server.dart';
-import 'remote_signaling_client.dart';
 
 class StreamingCoordinator {
   StreamingCoordinator({
     required LocalSessionServer localSessionServer,
-    required RemoteSignalingClient remoteSignalingClient,
     required JoinLinkService joinLinkService,
   }) : _localSessionServer = localSessionServer,
-       _remoteSignalingClient = remoteSignalingClient,
        _joinLinkService = joinLinkService;
 
   final LocalSessionServer _localSessionServer;
-  final RemoteSignalingClient _remoteSignalingClient;
   final JoinLinkService _joinLinkService;
 
   Future<HostedSession> createHostSession({
@@ -25,6 +23,7 @@ class StreamingCoordinator {
     required bool pinProtected,
     String? pin,
     required StreamingSettings settings,
+    RemoteServerStatus? remoteServerStatus,
   }) async {
     if (mode == StreamingMode.local) {
       return _localSessionServer.createRoom(
@@ -35,7 +34,7 @@ class StreamingCoordinator {
     }
 
     final serverUrl = settings.signalingServerUrl?.trim();
-    if (!settings.internetStreamingEnabled ||
+    if (!settings.internetModeConfigured ||
         serverUrl == null ||
         serverUrl.isEmpty) {
       throw AppException(
@@ -44,19 +43,43 @@ class StreamingCoordinator {
       );
     }
 
-    _remoteSignalingClient.connect(serverUrl);
+    if (remoteServerStatus == null || !remoteServerStatus.internetBroadcastReady) {
+      throw AppException(
+        'Internet mode requires an active server connection. Use Settings > Test Connection and Connect first.',
+        code: 'internet_mode_not_connected',
+      );
+    }
+
     return HostedSession(
       roomId: 'SW-INTERNET',
       roomName: roomName,
       mode: StreamingMode.internet,
       serverUrl: serverUrl,
-      pinProtected: pinProtected,
+      roomPinProtected: pinProtected,
       pin: pin,
     );
   }
 
-  String buildQrPayload(HostedSession session) {
-    return _joinLinkService.buildQrPayload(session);
+  String buildAppQrPayload(HostedSession session, {String? appVersion}) {
+    return _joinLinkService.buildAppQrPayload(
+      session,
+      appVersion: appVersion,
+    );
+  }
+
+  String buildBrowserQrPayload(HostedSession session) {
+    return _joinLinkService.buildBrowserUrlQr(
+      RoomJoinTarget(
+        mode: session.mode,
+        roomId: session.roomId,
+        hostAddress: session.hostAddress,
+        hostPort: session.hostPort,
+        serverUrl: session.serverUrl,
+        pin: session.pin,
+        roomPinProtected: session.roomPinProtected,
+      ),
+      includeRoomPin: false,
+    );
   }
 
   Future<void> stopLocalSession() {

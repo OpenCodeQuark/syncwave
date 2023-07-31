@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$StreamingSettings {
 
- bool get internetStreamingEnabled; String? get signalingServerUrl;
+ bool get internetStreamingEnabled; String? get signalingServerUrl; bool get serverConnectionPinConfigured;
 /// Create a copy of StreamingSettings
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $StreamingSettingsCopyWith<StreamingSettings> get copyWith => _$StreamingSetting
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is StreamingSettings&&(identical(other.internetStreamingEnabled, internetStreamingEnabled) || other.internetStreamingEnabled == internetStreamingEnabled)&&(identical(other.signalingServerUrl, signalingServerUrl) || other.signalingServerUrl == signalingServerUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is StreamingSettings&&(identical(other.internetStreamingEnabled, internetStreamingEnabled) || other.internetStreamingEnabled == internetStreamingEnabled)&&(identical(other.signalingServerUrl, signalingServerUrl) || other.signalingServerUrl == signalingServerUrl)&&(identical(other.serverConnectionPinConfigured, serverConnectionPinConfigured) || other.serverConnectionPinConfigured == serverConnectionPinConfigured));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,internetStreamingEnabled,signalingServerUrl);
+int get hashCode => Object.hash(runtimeType,internetStreamingEnabled,signalingServerUrl,serverConnectionPinConfigured);
 
 @override
 String toString() {
-  return 'StreamingSettings(internetStreamingEnabled: $internetStreamingEnabled, signalingServerUrl: $signalingServerUrl)';
+  return 'StreamingSettings(internetStreamingEnabled: $internetStreamingEnabled, signalingServerUrl: $signalingServerUrl, serverConnectionPinConfigured: $serverConnectionPinConfigured)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $StreamingSettingsCopyWith<$Res>  {
   factory $StreamingSettingsCopyWith(StreamingSettings value, $Res Function(StreamingSettings) _then) = _$StreamingSettingsCopyWithImpl;
 @useResult
 $Res call({
- bool internetStreamingEnabled, String? signalingServerUrl
+ bool internetStreamingEnabled, String? signalingServerUrl, bool serverConnectionPinConfigured
 });
 
 
@@ -65,11 +65,12 @@ class _$StreamingSettingsCopyWithImpl<$Res>
 
 /// Create a copy of StreamingSettings
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? internetStreamingEnabled = null,Object? signalingServerUrl = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? internetStreamingEnabled = null,Object? signalingServerUrl = freezed,Object? serverConnectionPinConfigured = null,}) {
   return _then(_self.copyWith(
 internetStreamingEnabled: null == internetStreamingEnabled ? _self.internetStreamingEnabled : internetStreamingEnabled // ignore: cast_nullable_to_non_nullable
 as bool,signalingServerUrl: freezed == signalingServerUrl ? _self.signalingServerUrl : signalingServerUrl // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,serverConnectionPinConfigured: null == serverConnectionPinConfigured ? _self.serverConnectionPinConfigured : serverConnectionPinConfigured // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -154,10 +155,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool internetStreamingEnabled,  String? signalingServerUrl)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool internetStreamingEnabled,  String? signalingServerUrl,  bool serverConnectionPinConfigured)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _StreamingSettings() when $default != null:
-return $default(_that.internetStreamingEnabled,_that.signalingServerUrl);case _:
+return $default(_that.internetStreamingEnabled,_that.signalingServerUrl,_that.serverConnectionPinConfigured);case _:
   return orElse();
 
 }
@@ -175,10 +176,10 @@ return $default(_that.internetStreamingEnabled,_that.signalingServerUrl);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool internetStreamingEnabled,  String? signalingServerUrl)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool internetStreamingEnabled,  String? signalingServerUrl,  bool serverConnectionPinConfigured)  $default,) {final _that = this;
 switch (_that) {
 case _StreamingSettings():
-return $default(_that.internetStreamingEnabled,_that.signalingServerUrl);case _:
+return $default(_that.internetStreamingEnabled,_that.signalingServerUrl,_that.serverConnectionPinConfigured);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +196,10 @@ return $default(_that.internetStreamingEnabled,_that.signalingServerUrl);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool internetStreamingEnabled,  String? signalingServerUrl)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool internetStreamingEnabled,  String? signalingServerUrl,  bool serverConnectionPinConfigured)?  $default,) {final _that = this;
 switch (_that) {
 case _StreamingSettings() when $default != null:
-return $default(_that.internetStreamingEnabled,_that.signalingServerUrl);case _:
+return $default(_that.internetStreamingEnabled,_that.signalingServerUrl,_that.serverConnectionPinConfigured);case _:
   return null;
 
 }
@@ -210,11 +211,12 @@ return $default(_that.internetStreamingEnabled,_that.signalingServerUrl);case _:
 @JsonSerializable()
 
 class _StreamingSettings implements StreamingSettings {
-  const _StreamingSettings({this.internetStreamingEnabled = false, this.signalingServerUrl});
+  const _StreamingSettings({this.internetStreamingEnabled = false, this.signalingServerUrl, this.serverConnectionPinConfigured = false});
   factory _StreamingSettings.fromJson(Map<String, dynamic> json) => _$StreamingSettingsFromJson(json);
 
 @override@JsonKey() final  bool internetStreamingEnabled;
 @override final  String? signalingServerUrl;
+@override@JsonKey() final  bool serverConnectionPinConfigured;
 
 /// Create a copy of StreamingSettings
 /// with the given fields replaced by the non-null parameter values.
@@ -229,16 +231,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _StreamingSettings&&(identical(other.internetStreamingEnabled, internetStreamingEnabled) || other.internetStreamingEnabled == internetStreamingEnabled)&&(identical(other.signalingServerUrl, signalingServerUrl) || other.signalingServerUrl == signalingServerUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _StreamingSettings&&(identical(other.internetStreamingEnabled, internetStreamingEnabled) || other.internetStreamingEnabled == internetStreamingEnabled)&&(identical(other.signalingServerUrl, signalingServerUrl) || other.signalingServerUrl == signalingServerUrl)&&(identical(other.serverConnectionPinConfigured, serverConnectionPinConfigured) || other.serverConnectionPinConfigured == serverConnectionPinConfigured));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,internetStreamingEnabled,signalingServerUrl);
+int get hashCode => Object.hash(runtimeType,internetStreamingEnabled,signalingServerUrl,serverConnectionPinConfigured);
 
 @override
 String toString() {
-  return 'StreamingSettings(internetStreamingEnabled: $internetStreamingEnabled, signalingServerUrl: $signalingServerUrl)';
+  return 'StreamingSettings(internetStreamingEnabled: $internetStreamingEnabled, signalingServerUrl: $signalingServerUrl, serverConnectionPinConfigured: $serverConnectionPinConfigured)';
 }
 
 
@@ -249,7 +251,7 @@ abstract mixin class _$StreamingSettingsCopyWith<$Res> implements $StreamingSett
   factory _$StreamingSettingsCopyWith(_StreamingSettings value, $Res Function(_StreamingSettings) _then) = __$StreamingSettingsCopyWithImpl;
 @override @useResult
 $Res call({
- bool internetStreamingEnabled, String? signalingServerUrl
+ bool internetStreamingEnabled, String? signalingServerUrl, bool serverConnectionPinConfigured
 });
 
 
@@ -266,11 +268,12 @@ class __$StreamingSettingsCopyWithImpl<$Res>
 
 /// Create a copy of StreamingSettings
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? internetStreamingEnabled = null,Object? signalingServerUrl = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? internetStreamingEnabled = null,Object? signalingServerUrl = freezed,Object? serverConnectionPinConfigured = null,}) {
   return _then(_StreamingSettings(
 internetStreamingEnabled: null == internetStreamingEnabled ? _self.internetStreamingEnabled : internetStreamingEnabled // ignore: cast_nullable_to_non_nullable
 as bool,signalingServerUrl: freezed == signalingServerUrl ? _self.signalingServerUrl : signalingServerUrl // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,serverConnectionPinConfigured: null == serverConnectionPinConfigured ? _self.serverConnectionPinConfigured : serverConnectionPinConfigured // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

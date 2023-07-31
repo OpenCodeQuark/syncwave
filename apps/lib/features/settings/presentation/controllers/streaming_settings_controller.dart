@@ -17,9 +17,12 @@ class StreamingSettingsController extends AsyncNotifier<StreamingSettings> {
   Future<void> saveInternetStreamingConfig({
     required bool internetEnabled,
     required String serverUrlInput,
+    required String serverConnectionPinInput,
   }) async {
     final currentSettings = state.value ?? await _repository.load();
     final trimmedUrl = serverUrlInput.trim();
+    final trimmedServerPin = serverConnectionPinInput.trim();
+
     String? normalizedUrl;
     try {
       if (trimmedUrl.isNotEmpty) {
@@ -29,6 +32,14 @@ class StreamingSettingsController extends AsyncNotifier<StreamingSettings> {
       throw AppException(
         'Enter a valid signaling server URL (ws://, wss://, http://, or https://).',
         code: 'invalid_server_url',
+      );
+    }
+
+    if (trimmedServerPin.isNotEmpty &&
+        !_repository.isValidServerConnectionPin(trimmedServerPin)) {
+      throw AppException(
+        'Server Connection PIN must be 8 to 10 digits.',
+        code: 'invalid_server_connection_pin',
       );
     }
 
@@ -45,15 +56,39 @@ class StreamingSettingsController extends AsyncNotifier<StreamingSettings> {
     final nextSettings = currentSettings.copyWith(
       internetStreamingEnabled: internetEnabled,
       signalingServerUrl: normalizedUrl,
+      serverConnectionPinConfigured:
+          trimmedServerPin.isNotEmpty ||
+          currentSettings.serverConnectionPinConfigured,
     );
 
     state = const AsyncLoading();
-    await _repository.save(nextSettings);
-    state = AsyncData(nextSettings);
+    await _repository.save(
+      nextSettings,
+      serverConnectionPin: trimmedServerPin.isEmpty ? null : trimmedServerPin,
+    );
+
+    final reloaded = await _repository.load();
+    state = AsyncData(reloaded);
   }
 
   bool isValidSignalingServerUrl(String url) {
     return _repository.isValidSignalingServerUrl(url);
+  }
+
+  bool isValidServerConnectionPin(String pin) {
+    return _repository.isValidServerConnectionPin(pin);
+  }
+
+  String deriveStatusUrl(String normalizedWebSocketUrl) {
+    return _repository.deriveStatusUrl(normalizedWebSocketUrl);
+  }
+
+  String normalizeSignalingServerUrl(String url) {
+    return _repository.normalizeSignalingServerUrl(url);
+  }
+
+  Future<String?> readServerConnectionPin() {
+    return _repository.readServerConnectionPin();
   }
 }
 

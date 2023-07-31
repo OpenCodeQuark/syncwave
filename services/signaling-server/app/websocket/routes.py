@@ -10,10 +10,14 @@ from .handlers import WebSocketEventHandler
 logger = logging.getLogger(__name__)
 
 
-def build_websocket_router(handler: WebSocketEventHandler) -> APIRouter:
+def build_websocket_router(
+    handler: WebSocketEventHandler,
+    *,
+    websocket_path: str = '/ws',
+) -> APIRouter:
     router = APIRouter()
 
-    @router.websocket('/ws')
+    @router.websocket(websocket_path)
     async def websocket_endpoint(websocket: WebSocket) -> None:
         peer_id = websocket.query_params.get('peerId') or f'peer_{uuid.uuid4().hex[:8]}'
         await handler.connect(peer_id=peer_id, websocket=websocket)

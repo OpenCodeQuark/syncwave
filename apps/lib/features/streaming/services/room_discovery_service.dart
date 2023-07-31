@@ -35,7 +35,7 @@ class RoomDiscoveryService {
           _parseRequiredUri(payload.joinUrl!),
         );
         return urlTarget.copyWith(
-          pinProtected: payload.pinProtected,
+          roomPinProtected: payload.roomPinProtected,
           pin: payload.pin ?? urlTarget.pin,
         );
       }
@@ -47,7 +47,7 @@ class RoomDiscoveryService {
         hostPort: payload.hostPort,
         serverUrl: payload.serverUrl,
         pin: payload.pin,
-        pinProtected: payload.pinProtected,
+        roomPinProtected: payload.roomPinProtected,
       );
     }
 
@@ -136,7 +136,9 @@ class RoomDiscoveryService {
         hostPort: int.tryParse(uri.queryParameters['hostPort'] ?? ''),
         serverUrl: uri.queryParameters['serverUrl'],
         pin: parsedPin,
-        pinProtected: uri.queryParameters['pinProtected'] == 'true',
+        roomPinProtected:
+            uri.queryParameters['roomPinProtected'] == 'true' ||
+            uri.queryParameters['pinProtected'] == 'true',
       );
     }
 
@@ -173,7 +175,7 @@ class RoomDiscoveryService {
       hostPort: uri.hasPort ? uri.port : null,
       serverUrl: mode == StreamingMode.internet ? uri.toString() : null,
       pin: pin,
-      pinProtected: pin != null,
+      roomPinProtected: pin != null,
     );
   }
 
