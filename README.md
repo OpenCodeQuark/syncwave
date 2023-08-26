@@ -1,231 +1,229 @@
 # SyncWave
 
-Local-first synchronized session platform for nearby listening, built with Flutter + FastAPI.
+SyncWave is a **local-first live audio broadcast app** built with Flutter and FastAPI.
 
-- Mobile package/application ID: `dev.rajujha.syncwave`
-- Current release: **v1.0.0**
-- Local mode is default
-- External signaling server is optional
+- Package/application ID: `dev.rajujha.syncwave`
+- Current version: **1.0.0**
+- Flutter app root: `apps/`
+- Optional signaling backend: `services/signaling-server/`
+
+## What SyncWave Does
+
+SyncWave lets an Android host broadcast live audio to nearby listeners on the same Wi-Fi/hotspot network.
+
+- No external backend is required for normal local usage.
+- Internet signaling is optional and disabled by default.
+- iOS is listener-first in v1.0.0.
 
 ## Version Scope
 
 ### v1.0.0 (current)
-- Local-first room/session foundation
-- Local network interface/IP selection and validation
-- Room join architecture (room code, join URL, structured QR)
-- Two-QR host strategy (App QR + Browser URL QR)
-- Optional internet signaling setup with server status/handshake checks
-- Optional FastAPI signaling backend with deployment scaffolding
+
+- Local-first hosting and joining flow
+- Android live capture host pipeline (system audio + optional microphone)
+- Foreground broadcast service and MediaProjection permission flow
+- Automatic local/private IP selection for LAN/hotspot hosting
+- Single QR join strategy with `syncwave://` deep links
+- Manual join via room code / join URL / QR payload
+- Optional internet signaling setup (status probe + websocket handshake)
+- Optional FastAPI signaling backend with deploy-ready Dockerfile
 
 ### v2.0.0 (planned)
-- Live audio capture and transport
-- Microphone/system audio broadcasting
-- WebRTC audio media pipeline
-- Realtime playback/mixing
 
-v2.0.0 features are intentionally **not implemented** in this release.
+- Advanced WebRTC media optimization
+- Adaptive bitrate and deeper sync correction
+- Improved microphone mixing/routing controls
+- TURN/STUN scaling and production relay enhancements
+- Expanded desktop broadcast tooling
 
-## Local-First Product Behavior
+## Local-First Networking Rules
 
-### Local Mode (default)
-- No external backend required
-- Android host creates local session endpoint
-- Listeners join on same Wi-Fi/hotspot
-- Local IP is selected from valid private interfaces only
+Host start behavior is automatic (no local/internet mode switch in host UI):
 
-### Internet Mode (optional)
-- Disabled/hidden until configured
-- Requires valid server URL + successful server connection/handshake
-- Uses optional FastAPI signaling server
-- User enters their own server URL in Settings
+1. If usable local private IP exists (Wi-Fi/hotspot), local broadcasting is enabled.
+2. If optional internet signaling is configured + connected, internet-assisted sessions are available.
+3. If neither local IP nor connected signaling server exists, broadcast is blocked with:
 
-## Local Network Rules
+`Connect to Wi-Fi, enable hotspot, or connect an internet signaling server to start broadcasting.`
 
-Before local hosting starts, SyncWave selects a usable private IPv4 endpoint:
-1. Wi-Fi private IPv4
-2. Hotspot/tethering private IPv4
-3. Other valid private IPv4
-4. Reject if none found
+Local host/IP constraints:
 
-If no usable local IP is available, hosting is blocked with:
+- Priority: Wi-Fi private IPv4 -> hotspot/tethering private IPv4 -> other private IPv4
+- Mobile-data-only hosting is rejected
+- `localhost` and `127.0.0.1` are rejected for join targets
+- Link-local/invalid addresses are rejected
 
-`Connect to Wi-Fi or enable hotspot to start a local broadcast.`
+## Audio in v1.0.0
 
-Additional constraints:
-- Local hosting is blocked on mobile-data-only scenarios
-- `localhost` / `127.0.0.1` never used in join payloads
-- Link-local and invalid addresses are rejected
+### Host (Android)
 
-## PIN Types
+- Live system audio capture via Android `MediaProjection` + `AudioPlaybackCapture`
+- Foreground service for active broadcast lifecycle
+- Optional microphone overlay path
+- Host UI uses two user-facing toggles:
+  - `Audio Source` (default ON)
+  - `Microphone` (optional)
+- At least one audio source must be enabled to start
+
+### Listener
+
+- Listener join flow is available in app
+- Browser listener endpoint is available via `/stream/join` for live local playback
+- iOS remains listener-first
+
+## PIN Model
 
 ### Room PIN
-- Purpose: room access control
+
 - Optional
-- Must be exactly 6 digits
-- Used by join flows and room protection
+- Exactly 6 digits (`0-9`)
+- Used for room join protection
 
 ### Server Connection PIN
-- Purpose: optional server handshake/authentication
-- Optional unless server requires it
-- Must be 8 to 10 digits (numeric only)
+
+- Optional (unless server requires it)
+- 8 to 10 digits (`0-9`)
+- Used for optional internet signaling server handshake auth
 - Distinct from Room PIN
-- Stored through a dedicated repository boundary (secure-storage ready)
 
-## Optional Internet Server URL Handling
+## Deep Links, Join URLs, and QR
 
-Accepted user input:
+SyncWave uses a **single QR** strategy in host flow.
+
+- QR payload: `syncwave://join?...`
+- Host also provides copy actions for join link and room code
+
+### `syncwave://` examples
+
+- `syncwave://join?host=192.168.1.20:9000&room=SW-8FD2-KQ`
+- `syncwave://join?host=your-server.example.com&room=SW-8FD2-KQ`
+- `syncwave://join?host=192.168.1.20:9000&room=SW-8FD2-KQ&pin=123456`
+
+Rules:
+
+- `host` is required
+- `room`/`roomId` is supported
+- optional `pin` must pass 6-digit Room PIN validation
+- loopback/localhost targets are rejected
+
+### HTTP/HTTPS join URL examples
+
+Local:
+
+- `http://192.168.1.20:9000/stream/join`
+- `http://192.168.1.20:9000/stream/join?room=SW-8FD2-KQ`
+- `http://192.168.1.20:9000/stream/join?room=SW-8FD2-KQ&pin=123456`
+
+Internet:
+
+- `https://your-server.example.com/stream/join`
+- `https://your-server.example.com/stream/join?room=SW-8FD2-KQ`
+- `https://your-server.example.com/stream/join?room=SW-8FD2-KQ&pin=123456`
+
+## Optional Internet Signaling
+
+Internet signaling remains optional and disabled by default.
+
+Settings supports:
+
+- Enable Internet Streaming
+- Server URL
+- Server Connection PIN
+- Test Connection
+- Connect / Disconnect
+- Connection status panel
+
+Server URL input examples:
+
 - `https://your-server.example.com`
-- `http://your-server.example.com`
+- `http://192.168.1.20:9000`
 - `wss://your-server.example.com/ws`
 - `ws://your-server.example.com/ws`
 
-Normalized internally:
-- `https://your-server.example.com` -> `wss://your-server.example.com/ws`
-- `http://your-server.example.com` -> `ws://your-server.example.com/ws`
-- `wss://your-server.example.com` -> `wss://your-server.example.com/ws`
-- `ws://your-server.example.com` -> `ws://your-server.example.com/ws`
-- Existing explicit path is preserved
+Internal normalization:
 
-Derived status URL:
-- `wss://your-server.example.com/ws` -> `https://your-server.example.com/status`
-- `ws://your-server.example.com/ws` -> `http://your-server.example.com/status`
+- `https://...` -> `wss://.../ws`
+- `http://...` -> `ws://.../ws`
+- `/status` URL is derived automatically from normalized websocket URL
 
-## Server Connection Status (Settings)
+## Optional Backend (FastAPI)
 
-Settings > Advanced / Internet Streaming shows:
-- Normalized WebSocket URL
-- Derived HTTP status URL
-- Connection state
-- Last checked time
-- Server/protocol version (if available)
-- Redis/active rooms/active connections (if available)
-- Error code/message (if failed)
+Location: `services/signaling-server/`
 
-Supported UI states:
-- Not configured
-- Invalid URL
-- Checking...
-- Server reachable
-- Server online, not connected
-- Connected
-- Disconnected
-- Authentication required
-- Authentication failed
-- WebSocket failed
-- Not a SyncWave server
+### Endpoints
 
-Actions:
-- `Test Connection`: probes `/status` (fallback `/health`) and optional websocket handshake check
-- `Connect`: keeps websocket open only after explicit connect
-- `Disconnect`: closes active optional signaling connection
+- `GET /`
+- `GET /health`
+- `GET /status`
+- `WS /ws`
 
-Internet broadcast availability requires:
-- Internet streaming enabled
-- Valid server URL
-- Server reachable
-- WebSocket connected
-- Handshake/authentication accepted
+`/status` includes:
 
-## Server Handshake Protocol (v1.0.0)
+- app/version/environment/status
+- server time
+- redis connection state
+- active rooms/connections
+- websocket path
+- supported protocol version
+- authentication-required flag
 
-Client hello event:
+### Handshake Events
+
 - `server.hello`
-- includes app name/version, protocol version, platform, optional Server Connection PIN
-
-Server responses:
 - `server.ready`
 - `server.auth_required`
 - `server.auth_failed`
 - `server.unsupported_version`
 - `error`
 
-## Join Contract and URL Formats
+### Redis
 
-### Local examples
-- `http://192.168.1.20:9000/stream/join`
-- `http://192.168.1.20:9000/stream/join?room=SW-8FD2-KQ`
-- `http://192.168.1.20:9000/stream/join?room=SW-8FD2-KQ&pin=123456`
+Redis is optional in v1.0.0.
 
-### Internet examples
-- `https://your-server.example.com/stream/join`
-- `https://your-server.example.com/stream/join?room=SW-8FD2-KQ`
-- `https://your-server.example.com/stream/join?room=SW-8FD2-KQ&pin=123456`
+- Server runs without Redis (in-memory room/session state)
+- `/status` reports `redisConnected`
 
-Parser support:
-- `room`
-- `roomId`
-- `pin` (validated as Room PIN: exactly 6 digits)
-- structured JSON app payloads
-- plain URL QR payloads
+## Deployment Notes
 
-## Two QR Strategy (Host)
+Recommended for long-running websocket workloads:
 
-### 1) App QR (for SyncWave app)
-Structured JSON payload, including:
-- app metadata
-- mode
-- room id
-- host/server endpoint info
-- `roomPinProtected`
-- join URL
-
-### 2) Browser URL QR (for browser-capable clients)
-Plain URL payload only:
-- Local: `http://192.168.1.20:9000/stream/join?room=...`
-- Internet: `https://your-server.example.com/stream/join?room=...`
-
-By default, Room PIN is **not** embedded in Browser URL QR.
-
-Browser listener playback is future-scope; full browser listener is not implemented in v1.0.0.
-
-## Backend API (Optional FastAPI)
-
-Location: `services/signaling-server/`
-
-Public status routes:
-- `GET /`
-- `GET /health`
-- `GET /status`
-
-`GET /` returns JSON metadata (not 404), including websocket/health/status paths.
-
-`GET /status` includes:
-- app name/version/environment
-- server time
-- Redis connection status
-- active room count
-- active connection count
-- websocket path
-- supported protocol version
-- authentication-required flag
-
-### WebSocket endpoint
-- Path: `/ws`
-
-Note: opening `/ws` in a browser tab usually does not render a normal HTML page. It is a WebSocket endpoint intended for WebSocket clients.
-
-## Deployment Notes (Optional Backend)
-
-Recommended for long-running websocket signaling:
 - Render
 - Railway
 - Fly.io
 
 Vercel note:
-- Not recommended as the primary long-running FastAPI websocket host in this setup
-- Can be used for future static landing/web assets
 
-Production command:
+- Not recommended as the primary host for this long-running websocket FastAPI service
+- Suitable later for static landing pages/web assets
+
+Production run command:
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
+## Architecture Overview
+
+### Flutter (`apps/lib`)
+
+- `features/host`: host setup + live room
+- `features/join`: scan/manual join flows
+- `features/settings`: optional internet signaling configuration/state
+- `features/streaming`: models/services/coordinator, deep links, validation, server status
+- `core/audio`: Android native audio capture bridge
+
+### Backend (`services/signaling-server/app`)
+
+- `api/`: HTTP routes (`/`, `/health`, `/status`)
+- `websocket/`: connection manager + websocket handlers/routes
+- `services/`: room/signaling/sync/redis services
+- `core/`: env/config/logging/security
+
 ## Monorepo Structure
 
 ```txt
 syncwave/
-├── apps/                          # Flutter app root
+├── apps/
 │   ├── android/
 │   ├── ios/
 │   ├── web/
@@ -236,7 +234,7 @@ syncwave/
 │   ├── test/
 │   └── pubspec.yaml
 ├── services/
-│   └── signaling-server/          # Optional FastAPI signaling backend
+│   └── signaling-server/
 │       ├── app/
 │       ├── tests/
 │       ├── Dockerfile
@@ -258,7 +256,7 @@ flutter pub get
 flutter run
 ```
 
-### Optional backend
+### Optional signaling backend
 
 ```bash
 cd services/signaling-server
@@ -290,9 +288,22 @@ python -m pytest
 ruff check app tests
 ```
 
-## Platform Notes
+## Platform Support
 
-- Android: host + listener architecture is supported in v1 foundation flow
-- iOS: listener-first path is prioritized
-- Unrestricted iOS system audio capture is not implemented
-- Live audio capture/transport is intentionally deferred to v2.0.0
+| Platform | Host | Listener |
+|---|---|---|
+| Android | Yes (v1.0.0) | Yes |
+| iOS | Not yet (host) | Yes (listener-first) |
+| Web/Desktop | Not host-target in v1 | Browser listener path available via join endpoint |
+
+## Screenshots / Demo Placeholders
+
+- Host setup screen
+- Live broadcast room with QR + join link actions
+- Join (scan/manual) flow
+- Internet streaming settings with connection state
+- About page
+
+## Resume-Ready Summary
+
+Built **SyncWave (v1.0.0)** as a production-oriented Flutter + FastAPI monorepo implementing local-first live audio broadcasting architecture, Android native capture integration (MediaProjection + foreground service), typed join/deep-link workflows, optional internet signaling with handshake/auth states, and deploy-ready backend runtime status/lifecycle hardening.

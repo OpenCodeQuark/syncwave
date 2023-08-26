@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/audio/android_audio_capture_bridge.dart';
 import '../../../core/network/signaling_web_socket_client.dart';
 import '../services/join_link_service.dart';
+import '../services/live_audio_broadcast_service.dart';
+import '../services/local_audio_broadcast_server.dart';
 import '../services/local_network_info_service.dart';
 import '../services/local_session_server.dart';
 import '../services/pin_validation_service.dart';
@@ -67,6 +72,33 @@ final localSessionServerProvider = Provider<LocalSessionServer>((ref) {
   );
 });
 
+final androidAudioCaptureBridgeProvider = Provider<AndroidAudioCaptureBridge>(
+  (ref) => AndroidAudioCaptureBridge(),
+);
+
+final localAudioBroadcastServerProvider = Provider<LocalAudioBroadcastServer>((
+  ref,
+) {
+  final server = LocalAudioBroadcastServer();
+  ref.onDispose(() {
+    unawaited(server.dispose());
+  });
+  return server;
+});
+
+final liveAudioBroadcastServiceProvider = Provider<LiveAudioBroadcastService>((
+  ref,
+) {
+  final service = LiveAudioBroadcastService(
+    audioCaptureBridge: ref.watch(androidAudioCaptureBridgeProvider),
+    localAudioBroadcastServer: ref.watch(localAudioBroadcastServerProvider),
+  );
+  ref.onDispose(() {
+    unawaited(service.dispose());
+  });
+  return service;
+});
+
 final remoteSignalingWebSocketClientProvider =
     Provider<SignalingWebSocketClient>((ref) => SignalingWebSocketClient());
 
@@ -84,7 +116,7 @@ final remoteServerStatusServiceProvider = Provider<RemoteServerStatusService>((
     remoteSignalingClient: ref.watch(remoteSignalingClientProvider),
   );
   ref.onDispose(() {
-    service.dispose();
+    unawaited(service.dispose());
   });
   return service;
 });

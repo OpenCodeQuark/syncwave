@@ -44,7 +44,10 @@ def create_app() -> FastAPI:
     async def lifespan(_: FastAPI):
         try:
             await redis_service.connect()
-            logger.info('Redis connected')
+            if redis_service.is_connected:
+                logger.info('Redis connected')
+            else:
+                logger.info('Redis disabled, using in-memory room state')
         except Exception:  # noqa: BLE001
             logger.warning('Redis unavailable, continuing with in-memory room state')
 

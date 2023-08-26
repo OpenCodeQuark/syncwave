@@ -18,35 +18,54 @@ class StreamingCoordinator {
   final JoinLinkService _joinLinkService;
 
   Future<HostedSession> createHostSession({
-    required StreamingMode mode,
     required String roomName,
     required bool pinProtected,
     String? pin,
     required StreamingSettings settings,
     RemoteServerStatus? remoteServerStatus,
+    required bool audioSourceEnabled,
+    required bool microphoneEnabled,
   }) async {
-    if (mode == StreamingMode.local) {
-      return _localSessionServer.createRoom(
+    HostedSession? localSession;
+    AppException? localFailure;
+    try {
+      localSession = await _localSessionServer.createRoom(
         roomName: roomName,
         pinProtected: pinProtected,
         pin: pin,
       );
+    } on AppException catch (error) {
+      localFailure = error;
     }
 
-    final serverUrl = settings.signalingServerUrl?.trim();
-    if (!settings.internetModeConfigured ||
-        serverUrl == null ||
-        serverUrl.isEmpty) {
-      throw AppException(
-        'Internet mode requires enabling internet streaming and a valid signaling server URL.',
-        code: 'internet_mode_not_configured',
+    final internetReady =
+        settings.internetModeConfigured &&
+        remoteServerStatus != null &&
+        remoteServerStatus.internetBroadcastReady;
+
+    if (localSession != null) {
+      return localSession.copyWith(
+        audioSourceEnabled: audioSourceEnabled,
+        microphoneEnabled: microphoneEnabled,
+        serverUrl: internetReady ? settings.signalingServerUrl : null,
       );
     }
 
-    if (remoteServerStatus == null || !remoteServerStatus.internetBroadcastReady) {
+    if (!internetReady) {
+      if (localFailure != null) {
+        throw localFailure;
+      }
       throw AppException(
-        'Internet mode requires an active server connection. Use Settings > Test Connection and Connect first.',
-        code: 'internet_mode_not_connected',
+        'Connect to Wi-Fi, enable hotspot, or connect an internet signaling server to start broadcasting.',
+        code: 'broadcast_unavailable',
+      );
+    }
+
+    final serverUrl = settings.signalingServerUrl?.trim();
+    if (serverUrl == null || serverUrl.isEmpty) {
+      throw AppException(
+        'Internet signaling is enabled, but server URL is missing.',
+        code: 'internet_mode_not_configured',
       );
     }
 
@@ -57,13 +76,37 @@ class StreamingCoordinator {
       serverUrl: serverUrl,
       roomPinProtected: pinProtected,
       pin: pin,
+      audioSourceEnabled: audioSourceEnabled,
+      microphoneEnabled: microphoneEnabled,
     );
   }
 
   String buildAppQrPayload(HostedSession session, {String? appVersion}) {
-    return _joinLinkService.buildAppQrPayload(
+    return _joinLinkService.buildAppQrPayload(session, appVersion: appVersion);
+  }
+
+  String buildPrimaryQrPayload(
+    HostedSession session, {
+    bool includeRoomPin = false,
+  }) {
+    return _joinLinkService.buildPrimaryQrPayload(
       session,
-      appVersion: appVersion,
+      includeRoomPin: includeRoomPin,
+    );
+  }
+
+  String buildJoinUrl(HostedSession session, {bool includeRoomPin = false}) {
+    return _joinLinkService.buildJoinUri(
+      RoomJoinTarget(
+        mode: session.mode,
+        roomId: session.roomId,
+        hostAddress: session.hostAddress,
+        hostPort: session.hostPort,
+        serverUrl: session.serverUrl,
+        pin: session.pin,
+        roomPinProtected: session.roomPinProtected,
+      ),
+      includeRoomPin: includeRoomPin,
     );
   }
 

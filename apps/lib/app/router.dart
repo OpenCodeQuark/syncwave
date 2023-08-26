@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/constants/route_paths.dart';
+import '../features/about/presentation/screens/about_screen.dart';
 import '../features/debug/presentation/screens/network_debug_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
 import '../features/host/presentation/screens/host_create_screen.dart';
@@ -13,6 +14,7 @@ import '../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../features/room/presentation/screens/room_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/streaming/models/hosted_session.dart';
+import '../features/streaming/models/room_join_target.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -72,13 +74,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'room',
         builder: (context, state) {
           final roomId = state.pathParameters['roomId'] ?? 'unknown';
-          return RoomScreen(roomId: roomId);
+          final joinTarget = state.extra is RoomJoinTarget
+              ? state.extra as RoomJoinTarget
+              : null;
+          return RoomScreen(roomId: roomId, joinTarget: joinTarget);
         },
       ),
       GoRoute(
         path: RoutePaths.settings,
         name: 'settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.about,
+        name: 'about',
+        builder: (context, state) => const AboutScreen(),
       ),
       GoRoute(
         path: RoutePaths.debugNetwork,

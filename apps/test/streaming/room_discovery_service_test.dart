@@ -57,5 +57,34 @@ void main() {
         throwsFormatException,
       );
     });
+
+    test('parses syncwave deep link with host and room', () {
+      final target = service.parseManualJoinInput(
+        'syncwave://join?host=192.168.1.20:9000&room=SW-8FD2-KQ',
+      );
+
+      expect(target.mode, StreamingMode.local);
+      expect(target.roomId, 'SW-8FD2-KQ');
+      expect(target.hostAddress, '192.168.1.20');
+      expect(target.hostPort, 9000);
+    });
+
+    test('rejects localhost syncwave target', () {
+      expect(
+        () => service.parseManualJoinInput(
+          'syncwave://join?host=127.0.0.1:9000&room=SW-8FD2-KQ',
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('parses syncwave internet host target', () {
+      final target = service.parseManualJoinInput(
+        'syncwave://join?host=your-server.example.com&room=SW-8FD2-KQ',
+      );
+
+      expect(target.mode, StreamingMode.internet);
+      expect(target.serverUrl, 'https://your-server.example.com');
+    });
   });
 }

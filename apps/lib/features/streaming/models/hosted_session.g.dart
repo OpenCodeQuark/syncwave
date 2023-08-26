@@ -16,6 +16,8 @@ _HostedSession _$HostedSessionFromJson(Map<String, dynamic> json) =>
       serverUrl: json['serverUrl'] as String?,
       pin: json['pin'] as String?,
       roomPinProtected: json['roomPinProtected'] as bool? ?? false,
+      audioSourceEnabled: json['audioSourceEnabled'] as bool? ?? true,
+      microphoneEnabled: json['microphoneEnabled'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$HostedSessionToJson(_HostedSession instance) =>
@@ -28,4 +30,6 @@ Map<String, dynamic> _$HostedSessionToJson(_HostedSession instance) =>
       'serverUrl': instance.serverUrl,
       'pin': instance.pin,
       'roomPinProtected': instance.roomPinProtected,
+      'audioSourceEnabled': instance.audioSourceEnabled,
+      'microphoneEnabled': instance.microphoneEnabled,
     };

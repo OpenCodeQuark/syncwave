@@ -1,7 +1,11 @@
 enum AudioSourceMode {
-  systemAudio('System Audio', 'Planned for Phase 5', false),
-  microphone('Microphone', 'Planned for Phase 4', false),
-  systemAudioWithMic('System Audio + Mic', 'Planned for later phase', false);
+  systemAudio('Audio Source', 'Capture system/device audio', true),
+  microphone('Microphone', 'Overlay microphone input', true),
+  systemAudioWithMic(
+    'Audio Source + Mic',
+    'Combine device audio and microphone',
+    true,
+  );
 
   const AudioSourceMode(this.label, this.availabilityNote, this.enabled);
 

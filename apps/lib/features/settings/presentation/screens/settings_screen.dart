@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../core/errors/app_exception.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
@@ -33,7 +34,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final settingsState = ref.watch(streamingSettingsControllerProvider);
-    final remoteStatusState = ref.watch(remoteServerConnectionControllerProvider);
+    final remoteStatusState = ref.watch(
+      remoteServerConnectionControllerProvider,
+    );
     final remoteStatus = remoteStatusState.valueOrNull;
 
     return PrimaryScaffold(
@@ -95,9 +98,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 'Internet streaming is optional and disabled by default. Use your own server URL when needed.',
               ),
               const SizedBox(height: 8),
-              const Text(
-                'URL normalization: https://your-server.example.com -> wss://your-server.example.com/ws',
-              ),
               const SizedBox(height: 16),
               SwitchListTile(
                 value: _internetEnabled,
@@ -118,7 +118,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 keyboardType: TextInputType.url,
                 decoration: InputDecoration(
                   labelText: 'Signaling Server URL',
-                  hintText: 'wss://your-server.example.com/ws',
+                  hintText: 'https://your-server.example.com',
                   errorText: _internetEnabled && !isUrlValid
                       ? 'Enter a valid ws://, wss://, http://, or https:// URL'
                       : null,
@@ -205,8 +205,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(height: 8),
               Text('Connection state: ${connectionStatus.label}'),
-              if (normalizedWsUrl != null) Text('WebSocket URL: $normalizedWsUrl'),
-              if (derivedStatusUrl != null) Text('Status URL: $derivedStatusUrl'),
+              if (normalizedWsUrl != null)
+                Text('WebSocket URL: $normalizedWsUrl'),
+              if (derivedStatusUrl != null)
+                Text('Status URL: $derivedStatusUrl'),
               if (remoteStatus?.checkedAt != null)
                 Text('Last checked: ${remoteStatus!.checkedAt}'),
               if (remoteStatus?.serverVersion != null)
@@ -238,8 +240,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 )
                                 .readServerConnectionPin();
 
-                            final pinInput =
-                                _serverConnectionPinController.text.trim();
+                            final pinInput = _serverConnectionPinController.text
+                                .trim();
                             final effectivePin = pinInput.isNotEmpty
                                 ? pinInput
                                 : savedPin;
@@ -255,7 +257,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   attemptWebSocket: true,
                                 );
                           },
-                    icon: const Icon(Icons.network_check),
+                    icon: PhosphorIcon(PhosphorIcons.network()),
                     label: Text(
                       remoteStatusState.isLoading
                           ? 'Checking...'
@@ -271,12 +273,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             )
                             .disconnect();
                       },
-                      icon: const Icon(Icons.link_off),
+                      icon: PhosphorIcon(PhosphorIcons.linkBreak()),
                       label: const Text('Disconnect'),
                     )
                   else
                     FilledButton.icon(
-                      onPressed: !_internetEnabled ||
+                      onPressed:
+                          !_internetEnabled ||
                               !isUrlValid ||
                               remoteStatus == null ||
                               !remoteStatus.reachable ||
@@ -285,12 +288,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           : () async {
                               final savedPin = await ref
                                   .read(
-                                    streamingSettingsControllerProvider.notifier,
+                                    streamingSettingsControllerProvider
+                                        .notifier,
                                   )
                                   .readServerConnectionPin();
 
-                              final pinInput =
-                                  _serverConnectionPinController.text.trim();
+                              final pinInput = _serverConnectionPinController
+                                  .text
+                                  .trim();
                               final effectivePin = pinInput.isNotEmpty
                                   ? pinInput
                                   : savedPin;
@@ -305,7 +310,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                     serverConnectionPin: effectivePin,
                                   );
                             },
-                      icon: const Icon(Icons.link),
+                      icon: PhosphorIcon(PhosphorIcons.link()),
                       label: const Text('Connect'),
                     ),
                 ],

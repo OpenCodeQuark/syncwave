@@ -17,6 +17,8 @@ abstract class HostedSession with _$HostedSession {
     String? serverUrl,
     String? pin,
     @Default(false) bool roomPinProtected,
+    @Default(true) bool audioSourceEnabled,
+    @Default(false) bool microphoneEnabled,
   }) = _HostedSession;
 
   factory HostedSession.fromJson(Map<String, dynamic> json) =>

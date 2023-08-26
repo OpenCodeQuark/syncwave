@@ -1,17 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../../../../core/config/app_config.dart';
+import '../../../../core/errors/app_exception.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
 import '../../../../shared/widgets/syncwave_card.dart';
 import '../../../streaming/models/hosted_session.dart';
+import '../../../streaming/models/live_broadcast_status.dart';
 import '../../../streaming/models/streaming_mode.dart';
 import '../../../streaming/providers/streaming_providers.dart';
 
-class HostLiveRoomScreen extends ConsumerWidget {
+class HostLiveRoomScreen extends ConsumerStatefulWidget {
   const HostLiveRoomScreen({
     super.key,
     required this.roomId,
@@ -22,32 +26,107 @@ class HostLiveRoomScreen extends ConsumerWidget {
   final HostedSession? hostedSession;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final config = ref.watch(appConfigProvider);
-    final session =
-        hostedSession ??
+  ConsumerState<HostLiveRoomScreen> createState() => _HostLiveRoomScreenState();
+}
+
+class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen> {
+  StreamSubscription<LiveBroadcastStatus>? _statusSubscription;
+  LiveBroadcastStatus _runtimeStatus = const LiveBroadcastStatus.idle();
+  bool _starting = false;
+  bool _stopping = false;
+
+  HostedSession get _session {
+    return widget.hostedSession ??
         HostedSession(
-          roomId: roomId,
+          roomId: widget.roomId,
           roomName: 'SyncWave Room',
           mode: StreamingMode.local,
           hostAddress: null,
           hostPort: 9000,
           roomPinProtected: false,
+          audioSourceEnabled: true,
+          microphoneEnabled: false,
         );
+  }
 
-    final coordinator = ref.read(streamingCoordinatorProvider);
+  @override
+  void initState() {
+    super.initState();
+    final service = ref.read(liveAudioBroadcastServiceProvider);
+    _runtimeStatus = service.status;
+    _statusSubscription = service.statusStream.listen((status) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _runtimeStatus = status;
+      });
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startBroadcast();
+    });
+  }
 
-    String? appQrPayload;
-    String? browserQrPayload;
+  @override
+  void dispose() {
+    _statusSubscription?.cancel();
+    final service = ref.read(liveAudioBroadcastServiceProvider);
+    unawaited(service.stop());
+    super.dispose();
+  }
+
+  Future<void> _startBroadcast() async {
+    if (_starting || _runtimeStatus.isRunning) {
+      return;
+    }
+    _starting = true;
+
     try {
-      appQrPayload = coordinator.buildAppQrPayload(
-        session,
-        appVersion: config.appVersion,
-      );
-      browserQrPayload = coordinator.buildBrowserQrPayload(session);
+      await ref
+          .read(liveAudioBroadcastServiceProvider)
+          .start(
+            session: _session,
+            useSystemAudio: _session.audioSourceEnabled,
+            useMicrophone: _session.microphoneEnabled,
+          );
+    } on AppException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      _starting = false;
+    }
+  }
+
+  Future<void> _stopBroadcast() async {
+    if (_stopping) {
+      return;
+    }
+
+    _stopping = true;
+    try {
+      await ref.read(liveAudioBroadcastServiceProvider).stop();
+    } finally {
+      _stopping = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final coordinator = ref.read(streamingCoordinatorProvider);
+    final session = _session;
+
+    String? qrPayload;
+    String? joinLink;
+    try {
+      qrPayload = coordinator.buildPrimaryQrPayload(session);
+      joinLink = _runtimeStatus.joinUrl ?? coordinator.buildJoinUrl(session);
     } on FormatException {
-      appQrPayload = null;
-      browserQrPayload = null;
+      qrPayload = null;
+      joinLink = null;
     }
 
     final endpointDescription = session.mode == StreamingMode.local
@@ -55,7 +134,7 @@ class HostLiveRoomScreen extends ConsumerWidget {
         : (session.serverUrl ?? 'Not configured');
 
     return PrimaryScaffold(
-      title: 'Live Room',
+      title: 'Live Broadcast',
       child: ListView(
         children: [
           SyncWaveCard(
@@ -63,10 +142,6 @@ class HostLiveRoomScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 8,
               children: [
-                const Text(
-                  'Room Code',
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
-                ),
                 Text(
                   session.roomId,
                   style: const TextStyle(
@@ -74,124 +149,136 @@ class HostLiveRoomScreen extends ConsumerWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text('Mode: ${session.mode.label}'),
                 Text('Join endpoint: $endpointDescription'),
                 Text(
                   session.roomPinProtected
                       ? 'Room PIN protection: enabled'
                       : 'Room PIN protection: disabled',
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'App QR (SyncWave app)',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                Text(
+                  'Audio Source: ${session.audioSourceEnabled ? 'On' : 'Off'}',
                 ),
-                if (appQrPayload != null)
-                  QrImageView(
-                    data: appQrPayload,
-                    size: 180,
-                    version: QrVersions.auto,
-                  )
-                else
-                  const Text('Waiting for a valid local network endpoint...'),
-                const Text(
-                  'App QR uses structured JSON for SyncWave clients.',
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: appQrPayload == null
-                          ? null
-                          : () async {
-                              final payload = appQrPayload!;
-                              await Clipboard.setData(
-                                ClipboardData(text: payload),
-                              );
-                              if (!context.mounted) {
-                                return;
-                              }
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('App QR payload copied'),
-                                ),
-                              );
-                            },
-                      icon: const Icon(Icons.qr_code),
-                      label: const Text('Copy App QR Data'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Browser URL QR (future browser listener support)',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                if (browserQrPayload != null)
-                  QrImageView(
-                    data: browserQrPayload,
-                    size: 180,
-                    version: QrVersions.auto,
-                  ),
-                const Text(
-                  'Room PIN is not embedded in browser URL QR by default.',
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: browserQrPayload == null
-                          ? null
-                          : () async {
-                              final shareUri = browserQrPayload!;
-                              await Clipboard.setData(
-                                ClipboardData(text: shareUri),
-                              );
-                              if (!context.mounted) {
-                                return;
-                              }
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Browser URL copied'),
-                                ),
-                              );
-                            },
-                      icon: const Icon(Icons.copy),
-                      label: const Text('Copy Browser URL'),
-                    ),
-                  ],
-                ),
+                Text('Microphone: ${session.microphoneEnabled ? 'On' : 'Off'}'),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          const SyncWaveCard(
+          const SizedBox(height: 12),
+          SyncWaveCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 8,
               children: [
-                Text('Session status: Ready'),
-                Text('Connected listeners: 0'),
                 Text(
-                  'Live audio capture and broadcasting are planned for v2.0.0.',
+                  _statusLabel(_runtimeStatus.phase),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text('Connected listeners: ${_runtimeStatus.listenerCount}'),
+                if (_runtimeStatus.message != null)
+                  Text(_runtimeStatus.message!),
+                if (_runtimeStatus.errorCode != null)
+                  Text('Error: ${_runtimeStatus.errorCode}'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SyncWaveCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 8,
+              children: [
+                const Text(
+                  'Join QR',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const Text(
+                  'Scan this SyncWave deep link from another device on the same network.',
+                ),
+                if (qrPayload != null)
+                  Center(
+                    child: QrImageView(
+                      data: qrPayload,
+                      size: 200,
+                      version: QrVersions.auto,
+                    ),
+                  )
+                else
+                  const Text('Waiting for a valid join endpoint...'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: joinLink == null
+                          ? null
+                          : () async {
+                              await Clipboard.setData(
+                                ClipboardData(text: joinLink!),
+                              );
+                              if (!context.mounted) {
+                                return;
+                              }
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Join link copied'),
+                                ),
+                              );
+                            },
+                      icon: PhosphorIcon(PhosphorIcons.copy()),
+                      label: const Text('Copy Join Link'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        await Clipboard.setData(
+                          ClipboardData(text: session.roomId),
+                        );
+                        if (!context.mounted) {
+                          return;
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Room code copied')),
+                        );
+                      },
+                      icon: PhosphorIcon(PhosphorIcons.tag()),
+                      label: const Text('Copy Room Code'),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
           FilledButton.tonalIcon(
-            onPressed: () async {
-              await coordinator.stopLocalSession();
-              if (!context.mounted) {
-                return;
-              }
-              context.pop();
-            },
-            icon: const Icon(Icons.stop_circle_outlined),
-            label: const Text('Stop Broadcast'),
+            onPressed: _stopping
+                ? null
+                : () async {
+                    await _stopBroadcast();
+                    if (!context.mounted) {
+                      return;
+                    }
+                    context.pop();
+                  },
+            icon: PhosphorIcon(PhosphorIcons.stopCircle()),
+            label: Text(_stopping ? 'Stopping...' : 'Stop Broadcast'),
           ),
         ],
       ),
     );
+  }
+
+  String _statusLabel(LiveBroadcastPhase phase) {
+    switch (phase) {
+      case LiveBroadcastPhase.idle:
+        return 'Broadcast idle';
+      case LiveBroadcastPhase.blocked:
+        return 'Broadcast blocked';
+      case LiveBroadcastPhase.starting:
+        return 'Starting broadcast...';
+      case LiveBroadcastPhase.running:
+        return 'Broadcast is live';
+      case LiveBroadcastPhase.stopping:
+        return 'Stopping broadcast...';
+      case LiveBroadcastPhase.error:
+        return 'Broadcast error';
+    }
   }
 }

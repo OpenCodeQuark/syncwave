@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     protocol_version: str = '1'
     require_server_connection_pin: bool = False
     server_connection_pin: str = ''
-    redis_url: str = 'redis://redis:6379/0'
+    redis_url: str = ''
     room_ttl_seconds: int = 21600
     max_participants_per_room: int = 20
     pin_hash_secret: str = 'change-this-in-production'

@@ -53,7 +53,8 @@ class _JoinManualScreenState extends ConsumerState<JoinManualScreen> {
             textInputAction: TextInputAction.next,
             decoration: const InputDecoration(
               labelText: 'Room code, join URL, or QR payload JSON',
-              hintText: 'http://192.168.1.20:9000/stream/join?room=SW-8FD2-KQ',
+              hintText:
+                  'syncwave://join?host=192.168.1.20:9000&room=SW-8FD2-KQ',
             ),
           ),
           const SizedBox(height: 12),
@@ -113,7 +114,7 @@ class _JoinManualScreenState extends ConsumerState<JoinManualScreen> {
                   context,
                 ).showSnackBar(SnackBar(content: Text(endpointSummary)));
 
-                context.push(RoutePaths.roomPath(target.roomId));
+                context.push(RoutePaths.roomPath(target.roomId), extra: target);
               } on FormatException catch (error) {
                 ScaffoldMessenger.of(
                   context,

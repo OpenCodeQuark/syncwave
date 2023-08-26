@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
@@ -30,8 +31,13 @@ class HomeScreen extends ConsumerWidget {
       title: 'SyncWave',
       actions: [
         IconButton(
+          onPressed: () => context.push(RoutePaths.about),
+          icon: PhosphorIcon(PhosphorIcons.info()),
+          tooltip: 'About',
+        ),
+        IconButton(
           onPressed: () => context.push(RoutePaths.settings),
-          icon: const Icon(Icons.settings),
+          icon: PhosphorIcon(PhosphorIcons.gear()),
           tooltip: 'Settings',
         ),
       ],
@@ -47,18 +53,13 @@ class HomeScreen extends ConsumerWidget {
           ),
           FilledButton.icon(
             onPressed: () => context.push(RoutePaths.hostCreate),
-            icon: const Icon(Icons.wifi_tethering),
+            icon: PhosphorIcon(PhosphorIcons.broadcast()),
             label: const Text('Start Broadcast'),
           ),
           OutlinedButton.icon(
             onPressed: () => context.push(RoutePaths.join),
-            icon: const Icon(Icons.headphones),
+            icon: PhosphorIcon(PhosphorIcons.headphones()),
             label: const Text('Join Session'),
-          ),
-          OutlinedButton.icon(
-            onPressed: () => context.push(RoutePaths.debugNetwork),
-            icon: const Icon(Icons.bug_report),
-            label: const Text('Open Debug Screen'),
           ),
           const SizedBox(height: 16),
           const Text(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../core/errors/app_exception.dart';
@@ -65,7 +66,7 @@ class _JoinScanScreenState extends ConsumerState<JoinScanScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Scan an App QR (JSON payload) or Browser URL QR (/stream/join link).',
+            'Scan a SyncWave join QR or /stream/join URL QR.',
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
@@ -122,13 +123,18 @@ class _JoinScanScreenState extends ConsumerState<JoinScanScreen> {
                             }
                           }
 
-                          final target = parsedTarget.copyWith(pin: effectivePin);
+                          final target = parsedTarget.copyWith(
+                            pin: effectivePin,
+                          );
 
                           if (!context.mounted) {
                             return;
                           }
 
-                          context.push(RoutePaths.roomPath(target.roomId));
+                          context.push(
+                            RoutePaths.roomPath(target.roomId),
+                            extra: target,
+                          );
                         } on FormatException catch (error) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -224,7 +230,7 @@ class _CameraPermissionCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.camera_alt_outlined, size: 48),
+            PhosphorIcon(PhosphorIcons.camera(), size: 48),
             const SizedBox(height: 12),
             const Text(
               'Camera permission is required to scan SyncWave QR codes.',

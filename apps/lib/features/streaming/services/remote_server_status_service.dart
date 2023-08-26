@@ -88,7 +88,9 @@ class RemoteServerStatusService {
       final statusResponse = await _httpClient
           .get(Uri.parse(statusUrl))
           .timeout(const Duration(seconds: 5));
-      final healthUrl = Uri.parse(statusUrl).replace(path: '/health').toString();
+      final healthUrl = Uri.parse(
+        statusUrl,
+      ).replace(path: '/health').toString();
 
       Map<String, dynamic>? decoded;
       var sourceWasStatus = false;
@@ -108,7 +110,8 @@ class RemoteServerStatusService {
             .get(Uri.parse(healthUrl))
             .timeout(const Duration(seconds: 5));
 
-        if (healthResponse.statusCode < 200 || healthResponse.statusCode >= 300) {
+        if (healthResponse.statusCode < 200 ||
+            healthResponse.statusCode >= 300) {
           return _emitStatus(
             RemoteServerStatus(
               normalizedWebSocketUrl: normalizedWebSocketUrl,
@@ -196,14 +199,14 @@ class RemoteServerStatusService {
           errorCode: 'status_timeout',
         ),
       );
-    } catch (error) {
+    } catch (_) {
       return _emitStatus(
         RemoteServerStatus(
           normalizedWebSocketUrl: normalizedWebSocketUrl,
           statusUrl: statusUrl,
           checkedAt: _now(),
           state: RemoteServerConnectionState.disconnected,
-          message: error.toString(),
+          message: 'Unable to reach server status endpoint.',
           errorCode: 'status_unreachable',
         ),
       );
@@ -244,7 +247,9 @@ class RemoteServerStatusService {
     }
 
     try {
-      _eventStream = _remoteSignalingClient.connect(normalizedUrl);
+      _eventStream = _remoteSignalingClient
+          .connect(normalizedUrl)
+          .asBroadcastStream();
       final eventStream = _eventStream;
       if (eventStream == null) {
         throw AppException('WebSocket stream unavailable.');
@@ -290,7 +295,8 @@ class RemoteServerStatusService {
             state: RemoteServerConnectionState.authenticationFailed,
             checkedAt: _now(),
             message:
-                handshake.message ?? 'Server Connection PIN authentication failed.',
+                handshake.message ??
+                'Server Connection PIN authentication failed.',
             errorCode: handshake.errorCode ?? 'server_connection_pin_invalid',
           ),
         );
@@ -304,7 +310,8 @@ class RemoteServerStatusService {
             handshakeAccepted: false,
             state: RemoteServerConnectionState.websocketFailed,
             checkedAt: _now(),
-            message: handshake.message ?? 'Unsupported server protocol version.',
+            message:
+                handshake.message ?? 'Unsupported server protocol version.',
             errorCode: handshake.errorCode ?? 'unsupported_protocol_version',
           ),
         );
@@ -367,7 +374,7 @@ class RemoteServerStatusService {
           errorCode: null,
         ),
       );
-    } catch (error) {
+    } catch (_) {
       await disconnect();
       return _emitStatus(
         checked.copyWith(
@@ -375,7 +382,7 @@ class RemoteServerStatusService {
           handshakeAccepted: false,
           state: RemoteServerConnectionState.websocketFailed,
           checkedAt: _now(),
-          message: error.toString(),
+          message: 'Unable to establish WebSocket connection.',
           errorCode: 'websocket_connect_failed',
         ),
       );
@@ -432,7 +439,7 @@ class RemoteServerStatusService {
     }
 
     try {
-      final stream = _remoteSignalingClient.connect(wsUrl);
+      final stream = _remoteSignalingClient.connect(wsUrl).asBroadcastStream();
       await _waitForConnectionReady(stream);
 
       final hello = ServerHelloEvent(
@@ -468,7 +475,9 @@ class RemoteServerStatusService {
           handshakeAccepted: false,
           state: RemoteServerConnectionState.authenticationFailed,
           checkedAt: _now(),
-          message: handshake.message ?? 'Server Connection PIN authentication failed.',
+          message:
+              handshake.message ??
+              'Server Connection PIN authentication failed.',
           errorCode: handshake.errorCode ?? 'server_connection_pin_invalid',
         );
       }
@@ -490,25 +499,28 @@ class RemoteServerStatusService {
         authenticationRequired: false,
         authenticationFailed: false,
         serverVersion: handshake.serverVersion ?? baseStatus.serverVersion,
-        protocolVersion: handshake.protocolVersion ?? baseStatus.protocolVersion,
+        protocolVersion:
+            handshake.protocolVersion ?? baseStatus.protocolVersion,
         state: RemoteServerConnectionState.serverOnlineNotConnected,
         checkedAt: _now(),
         message: 'Server online, not connected.',
       );
-    } catch (error) {
+    } catch (_) {
       await _remoteSignalingClient.disconnect();
       return baseStatus.copyWith(
         websocketConnected: false,
         handshakeAccepted: false,
         state: RemoteServerConnectionState.websocketFailed,
         checkedAt: _now(),
-        message: error.toString(),
+        message: 'WebSocket probe failed.',
         errorCode: 'websocket_probe_failed',
       );
     }
   }
 
-  Future<void> _waitForConnectionReady(Stream<Map<String, dynamic>> stream) async {
+  Future<void> _waitForConnectionReady(
+    Stream<Map<String, dynamic>> stream,
+  ) async {
     await stream
         .firstWhere((event) => event['type']?.toString() == 'connection.ready')
         .timeout(const Duration(seconds: 5));
@@ -517,14 +529,16 @@ class RemoteServerStatusService {
   Future<ServerHandshakeResponse> _waitForHandshake(
     Stream<Map<String, dynamic>> stream,
   ) async {
-    final handshakeEvent = await stream.firstWhere((event) {
-      final type = event['type']?.toString();
-      return type == 'server.ready' ||
-          type == 'server.auth_required' ||
-          type == 'server.auth_failed' ||
-          type == 'server.unsupported_version' ||
-          type == 'error';
-    }).timeout(const Duration(seconds: 5));
+    final handshakeEvent = await stream
+        .firstWhere((event) {
+          final type = event['type']?.toString();
+          return type == 'server.ready' ||
+              type == 'server.auth_required' ||
+              type == 'server.auth_failed' ||
+              type == 'server.unsupported_version' ||
+              type == 'error';
+        })
+        .timeout(const Duration(seconds: 5));
 
     return ServerHandshakeResponse.fromEvent(handshakeEvent);
   }

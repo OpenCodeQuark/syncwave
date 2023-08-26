@@ -13,6 +13,24 @@ class JoinLinkService {
 
   final PinValidationService _pinValidationService;
 
+  String buildPrimaryQrPayload(
+    HostedSession session, {
+    bool includeRoomPin = false,
+  }) {
+    return buildSyncWaveJoinDeepLink(
+      RoomJoinTarget(
+        mode: session.mode,
+        roomId: session.roomId,
+        hostAddress: session.hostAddress,
+        hostPort: session.hostPort,
+        serverUrl: session.serverUrl,
+        pin: session.pin,
+        roomPinProtected: session.roomPinProtected,
+      ),
+      includeRoomPin: includeRoomPin,
+    );
+  }
+
   String buildAppQrPayload(HostedSession session, {String? appVersion}) {
     final joinTarget = RoomJoinTarget(
       mode: session.mode,
@@ -46,6 +64,47 @@ class JoinLinkService {
     bool includeRoomPin = false,
   }) {
     return buildJoinUri(target, includeRoomPin: includeRoomPin);
+  }
+
+  String buildSyncWaveJoinDeepLink(
+    RoomJoinTarget target, {
+    bool includeRoomPin = false,
+  }) {
+    if (target.mode == StreamingMode.local) {
+      final host = target.hostAddress?.trim();
+      if (host == null || host.isEmpty || _isRejectedLocalHost(host)) {
+        throw const FormatException(
+          'Local deep link requires a valid private host address.',
+        );
+      }
+
+      final hostWithPort = target.hostPort == null
+          ? host
+          : '$host:${target.hostPort}';
+      return Uri(
+        scheme: 'syncwave',
+        host: 'join',
+        queryParameters: {
+          'host': hostWithPort,
+          'room': target.roomId,
+          if (includeRoomPin && target.pin != null) 'pin': target.pin,
+        },
+      ).toString();
+    }
+
+    final serverUri = _resolveInternetBaseUri(target.serverUrl);
+    final serverHost = serverUri.hasPort
+        ? '${serverUri.host}:${serverUri.port}'
+        : serverUri.host;
+    return Uri(
+      scheme: 'syncwave',
+      host: 'join',
+      queryParameters: {
+        'host': serverHost,
+        'room': target.roomId,
+        if (includeRoomPin && target.pin != null) 'pin': target.pin,
+      },
+    ).toString();
   }
 
   RoomJoinTarget parseQrPayload(String rawPayload) {
@@ -86,16 +145,10 @@ class JoinLinkService {
     );
   }
 
-  String buildJoinUri(
-    RoomJoinTarget target, {
-    bool includeRoomPin = false,
-  }) {
+  String buildJoinUri(RoomJoinTarget target, {bool includeRoomPin = false}) {
     if (target.mode == StreamingMode.local) {
       final host = target.hostAddress?.trim();
-      if (host == null ||
-          host.isEmpty ||
-          host == '127.0.0.1' ||
-          host == 'localhost') {
+      if (host == null || host.isEmpty || _isRejectedLocalHost(host)) {
         throw const FormatException(
           'Local join URL requires a LAN/hotspot host address.',
         );
@@ -148,9 +201,7 @@ class JoinLinkService {
         host: hostAddress,
         port: hostPort,
         path: '/stream/join',
-        queryParameters: {
-          'room': roomId,
-        },
+        queryParameters: {'room': roomId},
       ).toString(),
       hostAddress: hostAddress,
       hostPort: hostPort,
@@ -179,9 +230,7 @@ class JoinLinkService {
           .replace(
             scheme: serverUri.scheme == 'wss' ? 'https' : 'http',
             path: '/stream/join',
-            queryParameters: {
-              'room': roomId,
-            },
+            queryParameters: {'room': roomId},
           )
           .toString(),
       serverUrl: serverUrl,
@@ -206,6 +255,47 @@ class JoinLinkService {
   RoomJoinTarget _targetFromJoinUri(Uri uri) {
     final room = (uri.queryParameters['room'] ?? uri.queryParameters['roomId'])
         ?.trim();
+    if (uri.scheme.toLowerCase() == 'syncwave') {
+      final hostParameter = uri.queryParameters['host']?.trim();
+      if (hostParameter == null || hostParameter.isEmpty) {
+        throw const FormatException('syncwave:// join link is missing host.');
+      }
+
+      final split = hostParameter.split(':');
+      final host = split.first.trim();
+      final port = split.length > 1 ? int.tryParse(split.last.trim()) : null;
+      if (host.isEmpty ||
+          host == 'localhost' ||
+          host == '127.0.0.1' ||
+          host == '0.0.0.0') {
+        throw const FormatException('syncwave:// host is invalid.');
+      }
+
+      final effectiveRoom = (room == null || room.isEmpty)
+          ? null
+          : room.toUpperCase();
+      if (effectiveRoom == null || effectiveRoom.isEmpty) {
+        throw const FormatException('syncwave:// join link is missing room.');
+      }
+
+      final pin = _pinValidationService.normalizeAndValidateOptional(
+        uri.queryParameters['pin'],
+      );
+
+      final isLocal = _isPrivateIpv4(host);
+      return RoomJoinTarget(
+        mode: isLocal ? StreamingMode.local : StreamingMode.internet,
+        roomId: effectiveRoom,
+        hostAddress: isLocal ? host : null,
+        hostPort: isLocal ? (port ?? 9000) : null,
+        serverUrl: isLocal
+            ? null
+            : Uri(scheme: 'https', host: host, port: port).toString(),
+        pin: pin,
+        roomPinProtected: pin != null,
+      );
+    }
+
     final hasStreamJoinPath = _isStreamJoinPath(uri.pathSegments);
     final effectiveRoom = (room == null || room.isEmpty)
         ? (hasStreamJoinPath ? 'SW-UNKNOWN' : null)
@@ -218,7 +308,15 @@ class JoinLinkService {
       uri.queryParameters['pin'],
     );
 
-    final isLocal = uri.scheme.toLowerCase() == 'http' && _isPrivateIpv4(uri.host);
+    final normalizedHost = uri.host.trim().toLowerCase();
+    if (normalizedHost == 'localhost' || normalizedHost == '127.0.0.1') {
+      throw const FormatException(
+        'Join URL host cannot use localhost or loopback.',
+      );
+    }
+
+    final isLocal =
+        uri.scheme.toLowerCase() == 'http' && _isPrivateIpv4(uri.host);
 
     return RoomJoinTarget(
       mode: isLocal ? StreamingMode.local : StreamingMode.internet,
@@ -269,5 +367,13 @@ class JoinLinkService {
     }
 
     return false;
+  }
+
+  bool _isRejectedLocalHost(String host) {
+    final normalized = host.trim().toLowerCase();
+    return normalized == 'localhost' ||
+        normalized == '127.0.0.1' ||
+        normalized == '0.0.0.0' ||
+        !_isPrivateIpv4(host);
   }
 }

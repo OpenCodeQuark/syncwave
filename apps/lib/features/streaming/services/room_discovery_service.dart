@@ -116,25 +116,45 @@ class RoomDiscoveryService {
 
   RoomJoinTarget _roomTargetFromUri(Uri uri) {
     if (uri.scheme.toLowerCase() == 'syncwave') {
-      final mode = StreamingMode.fromWireValue(
-        uri.queryParameters['mode'] ?? 'local',
-      );
-      final roomId = uri.queryParameters['roomId'];
+      final roomId =
+          (uri.queryParameters['room'] ?? uri.queryParameters['roomId'])
+              ?.trim()
+              .toUpperCase();
+      final hostParameter = uri.queryParameters['host']?.trim();
+      if (roomId == null || roomId.isEmpty) {
+        throw const FormatException('syncwave:// join link is missing room.');
+      }
+      if (hostParameter == null || hostParameter.isEmpty) {
+        throw const FormatException('syncwave:// join link is missing host.');
+      }
 
-      if (roomId == null || roomId.trim().isEmpty) {
-        throw const FormatException('Join URI is missing roomId.');
+      final hostParts = hostParameter.split(':');
+      final host = hostParts.first.trim();
+      final port = hostParts.length > 1
+          ? int.tryParse(hostParts.last.trim())
+          : null;
+      if (host.isEmpty ||
+          host.toLowerCase() == 'localhost' ||
+          host == '127.0.0.1' ||
+          host == '0.0.0.0') {
+        throw const FormatException('syncwave:// host is invalid.');
       }
 
       final parsedPin = _pinValidationService.normalizeAndValidateOptional(
         uri.queryParameters['pin'],
       );
 
+      final isPrivateHost = _isPrivateIpv4(host);
+      final mode = isPrivateHost ? StreamingMode.local : StreamingMode.internet;
+
       return RoomJoinTarget(
         mode: mode,
         roomId: roomId,
-        hostAddress: uri.queryParameters['hostAddress'],
-        hostPort: int.tryParse(uri.queryParameters['hostPort'] ?? ''),
-        serverUrl: uri.queryParameters['serverUrl'],
+        hostAddress: isPrivateHost ? host : null,
+        hostPort: isPrivateHost ? (port ?? 9000) : null,
+        serverUrl: isPrivateHost
+            ? null
+            : Uri(scheme: 'https', host: host, port: port).toString(),
         pin: parsedPin,
         roomPinProtected:
             uri.queryParameters['roomPinProtected'] == 'true' ||
@@ -164,6 +184,13 @@ class RoomDiscoveryService {
     );
 
     final hostAddress = uri.host.isEmpty ? null : uri.host;
+    if (hostAddress != null &&
+        (hostAddress.toLowerCase() == 'localhost' ||
+            hostAddress == '127.0.0.1')) {
+      throw const FormatException(
+        'Join URL host cannot use localhost or loopback.',
+      );
+    }
     final isPrivateHost = hostAddress != null && _isPrivateIpv4(hostAddress);
 
     final mode = isPrivateHost ? StreamingMode.local : StreamingMode.internet;

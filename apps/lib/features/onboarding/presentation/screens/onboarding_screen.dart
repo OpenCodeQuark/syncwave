@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
@@ -43,7 +44,7 @@ class OnboardingScreen extends StatelessWidget {
                         'Host and listeners should be on the same Wi-Fi/hotspot in Local Mode.',
                       ),
                       Text(
-                        'v1.0.0 focuses on room/session foundations. Live audio broadcasting is planned for v2.0.0.',
+                        'v1.0.0 includes live Android host broadcasting with local-first networking.',
                       ),
                     ],
                   ),
@@ -59,10 +60,10 @@ class OnboardingScreen extends StatelessWidget {
                         style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                       Text(
-                        'Notification permission is requested when starting host broadcast to support future foreground broadcast status.',
+                        'Notification permission is requested when starting host broadcast for foreground service status.',
                       ),
                       Text(
-                        'Microphone broadcast and system audio capture will be enabled in later phases.',
+                        'System audio and optional microphone capture are available on supported Android hosts.',
                       ),
                     ],
                   ),
@@ -73,7 +74,7 @@ class OnboardingScreen extends StatelessWidget {
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: () => context.go(RoutePaths.home),
-            icon: const Icon(Icons.arrow_forward),
+            icon: PhosphorIcon(PhosphorIcons.arrowRight()),
             label: const Text('Continue'),
           ),
         ],

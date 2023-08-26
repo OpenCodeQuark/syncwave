@@ -69,14 +69,14 @@ void main() {
         protocolVersion: '1',
       );
 
-      expect(
-        status.normalizedWebSocketUrl,
-        'wss://your-server.example.com/ws',
-      );
+      expect(status.normalizedWebSocketUrl, 'wss://your-server.example.com/ws');
       expect(status.statusUrl, 'https://your-server.example.com/status');
       expect(status.reachable, isTrue);
       expect(status.isSyncWaveServer, isTrue);
-      expect(status.state, RemoteServerConnectionState.serverOnlineNotConnected);
+      expect(
+        status.state,
+        RemoteServerConnectionState.serverOnlineNotConnected,
+      );
       expect(status.serverVersion, '1.0.0');
       expect(status.activeRooms, 2);
       expect(status.activeConnections, 3);
@@ -160,42 +160,47 @@ void main() {
       expect(status.handshakeAccepted, isFalse);
     });
 
-    test('returns authentication required when handshake needs server pin',
-        () async {
-      final gateway = FakeRemoteSignalingGateway()
-        ..enqueueResponse(<Map<String, dynamic>>[
-          {
-            'type': 'connection.ready',
-            'payload': {'protocolVersion': '1'},
-          },
-          {
-            'type': 'server.auth_required',
-            'payload': {'code': 'server_connection_pin_required'},
-          },
-        ]);
+    test(
+      'returns authentication required when handshake needs server pin',
+      () async {
+        final gateway = FakeRemoteSignalingGateway()
+          ..enqueueResponse(<Map<String, dynamic>>[
+            {
+              'type': 'connection.ready',
+              'payload': {'protocolVersion': '1'},
+            },
+            {
+              'type': 'server.auth_required',
+              'payload': {'code': 'server_connection_pin_required'},
+            },
+          ]);
 
-      final service = RemoteServerStatusService(
-        serverUrlService: ServerUrlService(),
-        remoteSignalingClient: gateway,
-        httpClient: MockClient((request) async {
-          return http.Response(
-            '{"app":"SyncWave Signaling Server","version":"1.0.0","supportedProtocolVersion":"1","authenticationRequired":true}',
-            200,
-          );
-        }),
-      );
+        final service = RemoteServerStatusService(
+          serverUrlService: ServerUrlService(),
+          remoteSignalingClient: gateway,
+          httpClient: MockClient((request) async {
+            return http.Response(
+              '{"app":"SyncWave Signaling Server","version":"1.0.0","supportedProtocolVersion":"1","authenticationRequired":true}',
+              200,
+            );
+          }),
+        );
 
-      final status = await service.checkServer(
-        serverUrlInput: 'https://your-server.example.com',
-        appName: 'SyncWave',
-        appVersion: '1.0.0',
-        protocolVersion: '1',
-        attemptWebSocket: true,
-      );
+        final status = await service.checkServer(
+          serverUrlInput: 'https://your-server.example.com',
+          appName: 'SyncWave',
+          appVersion: '1.0.0',
+          protocolVersion: '1',
+          attemptWebSocket: true,
+        );
 
-      expect(status.state, RemoteServerConnectionState.authenticationRequired);
-      expect(status.authenticationRequired, isTrue);
-    });
+        expect(
+          status.state,
+          RemoteServerConnectionState.authenticationRequired,
+        );
+        expect(status.authenticationRequired, isTrue);
+      },
+    );
 
     test('returns authentication failed when server pin is wrong', () async {
       final gateway = FakeRemoteSignalingGateway()
@@ -233,8 +238,51 @@ void main() {
       expect(status.authenticationFailed, isTrue);
     });
 
-    test('reports handshake success without keeping socket open on test',
-        () async {
+    test(
+      'reports handshake success without keeping socket open on test',
+      () async {
+        final gateway = FakeRemoteSignalingGateway()
+          ..enqueueResponse(<Map<String, dynamic>>[
+            {
+              'type': 'connection.ready',
+              'payload': {'protocolVersion': '1'},
+            },
+            {
+              'type': 'server.ready',
+              'payload': {'serverVersion': '1.0.0', 'protocolVersion': '1'},
+            },
+          ]);
+
+        final service = RemoteServerStatusService(
+          serverUrlService: ServerUrlService(),
+          remoteSignalingClient: gateway,
+          httpClient: MockClient((request) async {
+            return http.Response(
+              '{"app":"SyncWave Signaling Server","version":"1.0.0","supportedProtocolVersion":"1"}',
+              200,
+            );
+          }),
+        );
+
+        final status = await service.checkServer(
+          serverUrlInput: 'https://your-server.example.com',
+          appName: 'SyncWave',
+          appVersion: '1.0.0',
+          protocolVersion: '1',
+          attemptWebSocket: true,
+        );
+
+        expect(
+          status.state,
+          RemoteServerConnectionState.serverOnlineNotConnected,
+        );
+        expect(status.handshakeAccepted, isTrue);
+        expect(status.websocketConnected, isFalse);
+        expect(gateway.disconnectCalls, greaterThan(0));
+      },
+    );
+
+    test('connect flow does not double-listen websocket stream', () async {
       final gateway = FakeRemoteSignalingGateway()
         ..enqueueResponse(<Map<String, dynamic>>[
           {
@@ -243,10 +291,7 @@ void main() {
           },
           {
             'type': 'server.ready',
-            'payload': {
-              'serverVersion': '1.0.0',
-              'protocolVersion': '1',
-            },
+            'payload': {'serverVersion': '1.0.0', 'protocolVersion': '1'},
           },
         ]);
 
@@ -261,18 +306,16 @@ void main() {
         }),
       );
 
-      final status = await service.checkServer(
+      final status = await service.connect(
         serverUrlInput: 'https://your-server.example.com',
         appName: 'SyncWave',
         appVersion: '1.0.0',
         protocolVersion: '1',
-        attemptWebSocket: true,
       );
 
-      expect(status.state, RemoteServerConnectionState.serverOnlineNotConnected);
+      expect(status.state, RemoteServerConnectionState.connected);
+      expect(status.websocketConnected, isTrue);
       expect(status.handshakeAccepted, isTrue);
-      expect(status.websocketConnected, isFalse);
-      expect(gateway.disconnectCalls, greaterThan(0));
     });
   });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
@@ -37,18 +38,18 @@ class JoinScreen extends ConsumerWidget {
           ),
           FilledButton.icon(
             onPressed: () => context.push(RoutePaths.joinScan),
-            icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('Scan Local QR'),
+            icon: PhosphorIcon(PhosphorIcons.scan()),
+            label: const Text('Scan QR'),
           ),
           OutlinedButton.icon(
             onPressed: () => context.push(RoutePaths.joinManual),
-            icon: const Icon(Icons.keyboard),
-            label: const Text('Manual Local Join'),
+            icon: PhosphorIcon(PhosphorIcons.keyboard()),
+            label: const Text('Manual Join'),
           ),
           if (internetEnabled)
             OutlinedButton.icon(
               onPressed: () => context.push(RoutePaths.joinManual),
-              icon: const Icon(Icons.public),
+              icon: PhosphorIcon(PhosphorIcons.globe()),
               label: const Text('Join Internet Session'),
             ),
           const Spacer(),

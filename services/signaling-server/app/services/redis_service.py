@@ -10,6 +10,9 @@ class RedisService:
         self._connected = False
 
     async def connect(self) -> None:
+        if not self._redis_url.strip():
+            self._connected = False
+            return
         self._client = Redis.from_url(self._redis_url, decode_responses=True)
         await self._client.ping()
         self._connected = True

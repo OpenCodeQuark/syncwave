@@ -11,7 +11,6 @@ import '../../../settings/presentation/controllers/streaming_settings_controller
 import '../../../streaming/models/audio_source_mode.dart';
 import '../../../streaming/models/internet_mode_gate.dart';
 import '../../../streaming/models/remote_server_status.dart';
-import '../../../streaming/models/streaming_mode.dart';
 import '../../../streaming/models/streaming_settings.dart';
 import '../../../streaming/providers/streaming_providers.dart';
 
@@ -26,9 +25,8 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
   final _roomNameController = TextEditingController(text: 'My SyncWave Room');
   final _pinController = TextEditingController();
   bool _pinEnabled = false;
-  String _qualityMode = 'Balanced';
-  String _networkMode = 'Wi-Fi';
-  StreamingMode _selectedMode = StreamingMode.local;
+  bool _audioSourceEnabled = true;
+  bool _microphoneEnabled = false;
   bool _isCreatingRoom = false;
 
   @override
@@ -46,14 +44,10 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
     final remoteStatus =
         ref.watch(remoteServerConnectionControllerProvider).valueOrNull ??
         const RemoteServerStatus();
-    final internetModeVisible = isInternetBroadcastAvailable(
+    final internetBroadcastReady = isInternetBroadcastAvailable(
       settings,
       remoteStatus,
     );
-
-    if (!internetModeVisible && _selectedMode == StreamingMode.internet) {
-      _selectedMode = StreamingMode.local;
-    }
 
     return PrimaryScaffold(
       title: 'Start Broadcast',
@@ -67,11 +61,63 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
           const Text(
             'Connect host and listeners to the same Wi-Fi or hotspot in Local Mode.',
           ),
-          if (!internetModeVisible && settings.internetModeConfigured)
+          const SizedBox(height: 8),
+          Text(
+            internetBroadcastReady
+                ? 'Internet signaling connected: internet-assisted sessions are available.'
+                : settings.internetModeConfigured
+                ? 'Internet signaling configured but not connected. Local broadcast still works.'
+                : 'Internet signaling is optional and currently disabled.',
+          ),
+          const SizedBox(height: 16),
+          Card.outlined(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 8,
+                children: [
+                  Text('Audio', style: Theme.of(context).textTheme.titleMedium),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _audioSourceEnabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _audioSourceEnabled = value;
+                      });
+                    },
+                    title: const Text('Audio Source'),
+                    subtitle: const Text(
+                      'Capture system/device audio (Android host only).',
+                    ),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _microphoneEnabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _microphoneEnabled = value;
+                      });
+                    },
+                    title: const Text('Microphone'),
+                    subtitle: const Text(
+                      'Overlay microphone input (optional).',
+                    ),
+                  ),
+                  if (!_audioSourceEnabled && !_microphoneEnabled)
+                    const Text(
+                      'Enable Audio Source or Microphone to continue.',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (!internetBroadcastReady && settings.internetModeConfigured)
             const Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text(
-                'Internet mode is configured but unavailable until server connection and handshake succeed in Settings.',
+                'Internet mode becomes available after Settings > Test Connection and Connect succeed.',
               ),
             ),
           const SizedBox(height: 16),
@@ -81,33 +127,6 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
             decoration: const InputDecoration(labelText: 'Room name'),
           ),
           const SizedBox(height: 16),
-          if (internetModeVisible)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Streaming mode'),
-                const SizedBox(height: 8),
-                SegmentedButton<StreamingMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: StreamingMode.local,
-                      label: Text('Local Mode'),
-                    ),
-                    ButtonSegment(
-                      value: StreamingMode.internet,
-                      label: Text('Internet Mode'),
-                    ),
-                  ],
-                  selected: {_selectedMode},
-                  onSelectionChanged: (selection) {
-                    setState(() {
-                      _selectedMode = selection.first;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
           SwitchListTile(
             value: _pinEnabled,
             onChanged: (value) {
@@ -131,66 +150,33 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                 ),
               ),
             ),
-          const Text('Audio Source (upcoming)'),
-          const SizedBox(height: 8),
-          ...AudioSourceMode.values.map(
-            (source) => ListTile(
-              leading: const Icon(Icons.upcoming),
-              title: Text(source.label),
-              subtitle: Text(source.availabilityNote),
-              trailing: const Text('Disabled'),
-            ),
-          ),
           const SizedBox(height: 8),
           const Text(
-            'Microphone broadcast and system audio capture will be enabled in later phases.',
+            'At least one audio option must be enabled before starting broadcast.',
           ),
           const SizedBox(height: 8),
-          const Text(
-            'v1.0.0 prepares room/session and QR architecture. Live audio broadcasting starts in v2.0.0.',
-          ),
-          const SizedBox(height: 16),
-          const Text('Quality mode'),
-          const SizedBox(height: 8),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'Low Latency', label: Text('Low Latency')),
-              ButtonSegment(value: 'Balanced', label: Text('Balanced')),
-              ButtonSegment(
-                value: 'High Stability',
-                label: Text('High Stability'),
-              ),
-            ],
-            selected: {_qualityMode},
-            onSelectionChanged: (selection) {
-              setState(() {
-                _qualityMode = selection.first;
-              });
-            },
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: _networkMode,
-            decoration: const InputDecoration(labelText: 'Network mode'),
-            items: const [
-              DropdownMenuItem(value: 'Wi-Fi', child: Text('Wi-Fi')),
-              DropdownMenuItem(value: 'Hotspot', child: Text('Hotspot')),
-            ],
-            onChanged: (value) {
-              if (value == null) {
-                return;
-              }
-
-              setState(() {
-                _networkMode = value;
-              });
-            },
+          Text(
+            '${AudioSourceMode.systemAudio.label} and microphone can run together on Android host.',
           ),
           const SizedBox(height: 24),
           FilledButton(
             onPressed: _isCreatingRoom
                 ? null
                 : () async {
+                    if (!_audioSourceEnabled && !_microphoneEnabled) {
+                      if (!mounted) {
+                        return;
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Enable Audio Source or Microphone before starting broadcast.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
                     setState(() {
                       _isCreatingRoom = true;
                     });
@@ -220,11 +206,22 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                         );
                       }
 
+                      if (_microphoneEnabled) {
+                        final microphoneGranted = await ref
+                            .read(permissionServiceProvider)
+                            .ensureMicrophonePermission();
+                        if (!microphoneGranted) {
+                          throw AppException(
+                            'Microphone permission is required when Microphone is enabled.',
+                            code: 'microphone_permission_required',
+                          );
+                        }
+                      }
+
                       final coordinator = ref.read(
                         streamingCoordinatorProvider,
                       );
                       final hostedSession = await coordinator.createHostSession(
-                        mode: _selectedMode,
                         roomName: _roomNameController.text.trim().isEmpty
                             ? 'SyncWave Room'
                             : _roomNameController.text.trim(),
@@ -232,6 +229,8 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                         pin: pin,
                         settings: settings,
                         remoteServerStatus: remoteStatus,
+                        audioSourceEnabled: _audioSourceEnabled,
+                        microphoneEnabled: _microphoneEnabled,
                       );
 
                       if (!context.mounted) {
