@@ -10,7 +10,7 @@ class StreamingSettingsRepository {
     required ServerUrlService serverUrlService,
     required ServerConnectionPinRepository serverConnectionPinRepository,
     required ServerConnectionPinValidationService
-        serverConnectionPinValidationService,
+    serverConnectionPinValidationService,
   }) : _serverUrlService = serverUrlService,
        _serverConnectionPinRepository = serverConnectionPinRepository,
        _serverConnectionPinValidationService =
@@ -18,7 +18,8 @@ class StreamingSettingsRepository {
 
   final ServerUrlService _serverUrlService;
   final ServerConnectionPinRepository _serverConnectionPinRepository;
-  final ServerConnectionPinValidationService _serverConnectionPinValidationService;
+  final ServerConnectionPinValidationService
+  _serverConnectionPinValidationService;
 
   static const _internetEnabledKey = 'settings.internet_streaming_enabled';
   static const _signalingServerUrlKey = 'settings.signaling_server_url';

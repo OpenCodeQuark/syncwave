@@ -6,15 +6,27 @@ import 'package:flutter/services.dart';
 class AudioCaptureChunk {
   const AudioCaptureChunk({
     required this.data,
+    required this.base64Payload,
     required this.sampleRate,
     required this.channelCount,
     required this.format,
+    required this.sequence,
+    required this.captureTimestampMs,
+    required this.hostTimestampMs,
+    required this.durationMs,
+    this.streamStartedAtMs,
   });
 
   final Uint8List data;
+  final String base64Payload;
   final int sampleRate;
   final int channelCount;
   final String format;
+  final int sequence;
+  final int captureTimestampMs;
+  final int hostTimestampMs;
+  final int durationMs;
+  final int? streamStartedAtMs;
 }
 
 class AndroidAudioCaptureBridge {
@@ -73,15 +85,40 @@ class AndroidAudioCaptureBridge {
     ) {
       final encoded = event['data']?.toString() ?? '';
       final decoded = base64Decode(encoded);
-      final sampleRate = (event['sampleRate'] as int?) ?? 48000;
-      final channelCount = (event['channelCount'] as int?) ?? 1;
+      final sampleRate = _toInt(event['sampleRate']) ?? 48000;
+      final channelCount = _toInt(event['channelCount']) ?? 1;
       final format = event['format']?.toString() ?? 'pcm16';
+      final sequence = _toInt(event['sequence']) ?? 0;
+      final captureTimestampMs = _toInt(event['captureTimestamp']) ?? 0;
+      final hostTimestampMs =
+          _toInt(event['hostTimestamp']) ?? captureTimestampMs;
+      final durationMs = _toInt(event['durationMs']) ?? 0;
+      final streamStartedAtMs = _toInt(event['streamStartedAt']);
       return AudioCaptureChunk(
         data: decoded,
+        base64Payload: encoded,
         sampleRate: sampleRate,
         channelCount: channelCount,
         format: format,
+        sequence: sequence,
+        captureTimestampMs: captureTimestampMs,
+        hostTimestampMs: hostTimestampMs,
+        durationMs: durationMs,
+        streamStartedAtMs: streamStartedAtMs,
       );
     });
+  }
+
+  int? _toInt(Object? value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    if (value is String) {
+      return int.tryParse(value);
+    }
+    return null;
   }
 }

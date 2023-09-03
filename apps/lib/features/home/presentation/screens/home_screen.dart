@@ -5,6 +5,8 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
+import '../../../../shared/widgets/section_card.dart';
+import '../../../../shared/widgets/status_badge.dart';
 import '../../../settings/presentation/controllers/remote_server_connection_controller.dart';
 import '../../../settings/presentation/controllers/streaming_settings_controller.dart';
 import '../../../streaming/models/internet_mode_gate.dart';
@@ -41,32 +43,53 @@ class HomeScreen extends ConsumerWidget {
           tooltip: 'Settings',
         ),
       ],
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 12,
+      child: ListView(
         children: [
-          Text(
-            internetBroadcastReady
-                ? 'Mode: Local-first (Internet signaling connected)'
-                : 'Mode: Local-first (No external server required)',
-            style: const TextStyle(fontWeight: FontWeight.w600),
+          SectionCard(
+            title: 'Local-First Ready',
+            subtitle:
+                'Host and listeners can run on the same Wi-Fi or hotspot without an external server.',
+            child: Row(
+              children: [
+                StatusBadge(
+                  label: internetBroadcastReady
+                      ? 'Internet signaling connected'
+                      : 'Local network mode',
+                  tone: internetBroadcastReady
+                      ? StatusBadgeTone.success
+                      : StatusBadgeTone.info,
+                ),
+              ],
+            ),
           ),
-          FilledButton.icon(
-            onPressed: () => context.push(RoutePaths.hostCreate),
-            icon: PhosphorIcon(PhosphorIcons.broadcast()),
-            label: const Text('Start Broadcast'),
+          const SizedBox(height: 12),
+          SectionCard(
+            title: 'Start',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 10,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => context.push(RoutePaths.hostCreate),
+                  icon: PhosphorIcon(PhosphorIcons.broadcast()),
+                  label: const Text('Start Broadcast'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => context.push(RoutePaths.join),
+                  icon: PhosphorIcon(PhosphorIcons.headphones()),
+                  label: const Text('Join Session'),
+                ),
+              ],
+            ),
           ),
-          OutlinedButton.icon(
-            onPressed: () => context.push(RoutePaths.join),
-            icon: PhosphorIcon(PhosphorIcons.headphones()),
-            label: const Text('Join Session'),
+          const SizedBox(height: 12),
+          const SectionCard(
+            title: 'Recent Rooms',
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: Text('No recent rooms yet')),
+            ),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Recent Rooms',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          const Expanded(child: Center(child: Text('No recent rooms yet'))),
         ],
       ),
     );

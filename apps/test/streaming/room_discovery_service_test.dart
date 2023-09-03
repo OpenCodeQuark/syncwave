@@ -11,11 +11,11 @@ void main() {
 
     test('parses local join URL with room and pin query params', () {
       final target = service.parseManualJoinInput(
-        'http://192.168.1.20:9000/stream/join?room=SW-8FD2-KQ&pin=123456',
+        'http://192.168.1.20:9000/stream/join?room=LAN-R12B9&pin=123456',
       );
 
       expect(target.mode, StreamingMode.local);
-      expect(target.roomId, 'SW-8FD2-KQ');
+      expect(target.roomId, 'LAN-R12B9');
       expect(target.hostAddress, '192.168.1.20');
       expect(target.hostPort, 9000);
       expect(target.pin, '123456');
@@ -23,21 +23,21 @@ void main() {
 
     test('parses internet join URL with room query param', () {
       final target = service.parseManualJoinInput(
-        'https://your-server.example.com/stream/join?room=SW-8FD2-KQ',
+        'https://your-server.example.com/stream/join?room=WAN-RM01P',
       );
 
       expect(target.mode, StreamingMode.internet);
-      expect(target.roomId, 'SW-8FD2-KQ');
+      expect(target.roomId, 'WAN-RM01P');
       expect(target.serverUrl, isNotNull);
     });
 
     test('parses join URL with roomId query parameter', () {
       final target = service.parseManualJoinInput(
-        'https://your-server.example.com/stream/join?roomId=SW-8FD2-KQ',
+        'https://your-server.example.com/stream/join?roomId=WAN-RM01P',
       );
 
       expect(target.mode, StreamingMode.internet);
-      expect(target.roomId, 'SW-8FD2-KQ');
+      expect(target.roomId, 'WAN-RM01P');
     });
 
     test('parses join URL without room into placeholder room id', () {
@@ -46,13 +46,13 @@ void main() {
       );
 
       expect(target.mode, StreamingMode.local);
-      expect(target.roomId, 'SW-UNKNOWN');
+      expect(target.roomId, 'LAN-UNKWN');
     });
 
     test('rejects invalid pin from join URL', () {
       expect(
         () => service.parseManualJoinInput(
-          'http://192.168.1.20:9000/stream/join?room=SW-8FD2-KQ&pin=12345',
+          'http://192.168.1.20:9000/stream/join?room=LAN-R12B9&pin=12345',
         ),
         throwsFormatException,
       );
@@ -60,11 +60,11 @@ void main() {
 
     test('parses syncwave deep link with host and room', () {
       final target = service.parseManualJoinInput(
-        'syncwave://join?host=192.168.1.20:9000&room=SW-8FD2-KQ',
+        'syncwave://join?host=192.168.1.20:9000&room=LAN-R12B9',
       );
 
       expect(target.mode, StreamingMode.local);
-      expect(target.roomId, 'SW-8FD2-KQ');
+      expect(target.roomId, 'LAN-R12B9');
       expect(target.hostAddress, '192.168.1.20');
       expect(target.hostPort, 9000);
     });
@@ -72,7 +72,16 @@ void main() {
     test('rejects localhost syncwave target', () {
       expect(
         () => service.parseManualJoinInput(
-          'syncwave://join?host=127.0.0.1:9000&room=SW-8FD2-KQ',
+          'syncwave://join?host=127.0.0.1:9000&room=LAN-R12B9',
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('rejects 0.0.0.0 syncwave target', () {
+      expect(
+        () => service.parseManualJoinInput(
+          'syncwave://join?host=0.0.0.0:9000&room=LAN-R12B9',
         ),
         throwsFormatException,
       );
@@ -80,11 +89,20 @@ void main() {
 
     test('parses syncwave internet host target', () {
       final target = service.parseManualJoinInput(
-        'syncwave://join?host=your-server.example.com&room=SW-8FD2-KQ',
+        'syncwave://join?host=your-server.example.com&room=WAN-RM01P',
       );
 
       expect(target.mode, StreamingMode.internet);
       expect(target.serverUrl, 'https://your-server.example.com');
+    });
+
+    test('respects roomPinProtected query flag without exposing pin', () {
+      final target = service.parseManualJoinInput(
+        'http://192.168.1.20:9000/stream/join?room=LAN-R12B9&roomPinProtected=true',
+      );
+
+      expect(target.roomPinProtected, isTrue);
+      expect(target.pin, isNull);
     });
   });
 }

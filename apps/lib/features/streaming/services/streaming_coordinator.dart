@@ -6,16 +6,20 @@ import '../models/streaming_mode.dart';
 import '../models/streaming_settings.dart';
 import 'join_link_service.dart';
 import 'local_session_server.dart';
+import 'wan_room_service.dart';
 
 class StreamingCoordinator {
   StreamingCoordinator({
     required LocalSessionServer localSessionServer,
     required JoinLinkService joinLinkService,
+    required WanRoomService wanRoomService,
   }) : _localSessionServer = localSessionServer,
-       _joinLinkService = joinLinkService;
+       _joinLinkService = joinLinkService,
+       _wanRoomService = wanRoomService;
 
   final LocalSessionServer _localSessionServer;
   final JoinLinkService _joinLinkService;
+  final WanRoomService _wanRoomService;
 
   Future<HostedSession> createHostSession({
     required String roomName,
@@ -35,6 +39,9 @@ class StreamingCoordinator {
         pin: pin,
       );
     } on AppException catch (error) {
+      if (error.code == 'local_room_already_active') {
+        rethrow;
+      }
       localFailure = error;
     }
 
@@ -43,11 +50,28 @@ class StreamingCoordinator {
         remoteServerStatus != null &&
         remoteServerStatus.internetBroadcastReady;
 
+    String? wanRoomId;
+    final serverUrl = settings.signalingServerUrl?.trim();
+    if (internetReady && serverUrl != null && serverUrl.isNotEmpty) {
+      try {
+        wanRoomId = await _wanRoomService.createWanRoom(
+          serverWebSocketUrl: serverUrl,
+          roomName: roomName,
+          pin: pin,
+        );
+      } on AppException {
+        if (localSession == null) {
+          rethrow;
+        }
+      }
+    }
+
     if (localSession != null) {
       return localSession.copyWith(
         audioSourceEnabled: audioSourceEnabled,
         microphoneEnabled: microphoneEnabled,
-        serverUrl: internetReady ? settings.signalingServerUrl : null,
+        serverUrl: internetReady ? serverUrl : null,
+        wanRoomId: wanRoomId,
       );
     }
 
@@ -61,7 +85,6 @@ class StreamingCoordinator {
       );
     }
 
-    final serverUrl = settings.signalingServerUrl?.trim();
     if (serverUrl == null || serverUrl.isEmpty) {
       throw AppException(
         'Internet signaling is enabled, but server URL is missing.',
@@ -69,11 +92,19 @@ class StreamingCoordinator {
       );
     }
 
+    if (wanRoomId == null || wanRoomId.trim().isEmpty) {
+      throw AppException(
+        'Internet signaling is connected, but WAN room creation failed.',
+        code: 'wan_room_create_failed',
+      );
+    }
+
     return HostedSession(
-      roomId: 'SW-INTERNET',
+      roomId: wanRoomId,
       roomName: roomName,
       mode: StreamingMode.internet,
       serverUrl: serverUrl,
+      wanRoomId: wanRoomId,
       roomPinProtected: pinProtected,
       pin: pin,
       audioSourceEnabled: audioSourceEnabled,
@@ -81,8 +112,16 @@ class StreamingCoordinator {
     );
   }
 
-  String buildAppQrPayload(HostedSession session, {String? appVersion}) {
-    return _joinLinkService.buildAppQrPayload(session, appVersion: appVersion);
+  String buildAppQrPayload(
+    HostedSession session, {
+    String? appVersion,
+    bool includeRoomPin = false,
+  }) {
+    return _joinLinkService.buildAppQrPayload(
+      session,
+      appVersion: appVersion,
+      includeRoomPin: includeRoomPin,
+    );
   }
 
   String buildPrimaryQrPayload(
@@ -122,6 +161,31 @@ class StreamingCoordinator {
         roomPinProtected: session.roomPinProtected,
       ),
       includeRoomPin: false,
+    );
+  }
+
+  String? buildInternetJoinUrl(
+    HostedSession session, {
+    bool includeRoomPin = false,
+  }) {
+    final serverUrl = session.serverUrl?.trim();
+    final wanRoomId = session.wanRoomId?.trim();
+    if (serverUrl == null ||
+        serverUrl.isEmpty ||
+        wanRoomId == null ||
+        wanRoomId.isEmpty) {
+      return null;
+    }
+
+    return _joinLinkService.buildJoinUri(
+      RoomJoinTarget(
+        mode: StreamingMode.internet,
+        roomId: wanRoomId,
+        serverUrl: serverUrl,
+        pin: session.pin,
+        roomPinProtected: session.roomPinProtected,
+      ),
+      includeRoomPin: includeRoomPin,
     );
   }
 

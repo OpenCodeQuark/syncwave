@@ -1,16 +1,21 @@
 import hashlib
 import hmac
+import re
 import secrets
 import string
 
-ROOM_PREFIX = 'SW'
+WAN_ROOM_PREFIX = 'WAN'
 ROOM_CHARS = string.ascii_uppercase + string.digits
+WAN_ROOM_PATTERN = rf'^{WAN_ROOM_PREFIX}-[A-Z0-9]{{5}}$'
 
 
-def generate_room_id() -> str:
-    chunk_1 = ''.join(secrets.choice(ROOM_CHARS) for _ in range(4))
-    chunk_2 = ''.join(secrets.choice(ROOM_CHARS) for _ in range(2))
-    return f'{ROOM_PREFIX}-{chunk_1}-{chunk_2}'
+def generate_wan_room_id() -> str:
+    suffix = ''.join(secrets.choice(ROOM_CHARS) for _ in range(5))
+    return f'{WAN_ROOM_PREFIX}-{suffix}'
+
+
+def is_valid_wan_room_id(room_id: str) -> bool:
+    return bool(re.match(WAN_ROOM_PATTERN, room_id.strip().upper()))
 
 
 def hash_pin(pin: str, secret: str) -> str:

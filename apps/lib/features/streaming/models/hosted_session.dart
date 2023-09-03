@@ -15,6 +15,7 @@ abstract class HostedSession with _$HostedSession {
     String? hostAddress,
     int? hostPort,
     String? serverUrl,
+    String? wanRoomId,
     String? pin,
     @Default(false) bool roomPinProtected,
     @Default(true) bool audioSourceEnabled,

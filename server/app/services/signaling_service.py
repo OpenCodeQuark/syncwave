@@ -22,6 +22,16 @@ class SignalingService:
             return self._handle_room_leave(event)
         if event.type == 'sync.ping':
             return self._handle_sync_ping(event)
+        if event.type == 'stream.host_start':
+            return self._handle_stream_host_start(event)
+        if event.type == 'stream.host_stop':
+            return self._handle_stream_host_stop(event)
+        if event.type == 'stream.listener_join':
+            return self._handle_stream_listener_join(event)
+        if event.type == 'stream.audio_chunk':
+            return self._handle_stream_audio_chunk(event)
+        if event.type == 'stream.ping':
+            return self._handle_stream_ping(event)
 
         return (
             EventEnvelope(
@@ -53,6 +63,9 @@ class SignalingService:
             host_device_name=host_device_name,
             host_platform=host_platform,
             pin=pin if isinstance(pin, str) and pin else None,
+            room_id=payload.get('roomId')
+            if isinstance(payload.get('roomId'), str)
+            else None,
         )
 
         response = EventEnvelope(
@@ -100,7 +113,12 @@ class SignalingService:
                 roomId=room.room_id,
                 peerId=event.peer_id,
                 payload={'participant': listener.model_dump(by_alias=True, mode='json')},
-            )
+            ),
+            EventEnvelope(
+                type='stream.listener_count',
+                roomId=room.room_id,
+                payload={'count': len(room.participants)},
+            ),
         ]
 
         return joined_response, broadcast_events
@@ -131,7 +149,12 @@ class SignalingService:
                 roomId=event.room_id,
                 peerId=event.peer_id,
                 payload={'peerId': event.peer_id},
-            )
+            ),
+            EventEnvelope(
+                type='stream.listener_count',
+                roomId=event.room_id,
+                payload={'count': len(room.participants) if room is not None else 0},
+            ),
         ]
 
         if room is not None and room.status == 'closed':
@@ -159,6 +182,138 @@ class SignalingService:
             [],
         )
 
+    def _handle_stream_host_start(
+        self, event: EventEnvelope
+    ) -> tuple[EventEnvelope, list[EventEnvelope]]:
+        if event.room_id is None:
+            raise RoomError('roomId is required for stream.host_start')
+
+        room = self._room_service.get_room(event.room_id)
+        if room is None or room.status != 'active':
+            raise RoomError('Room is not active for stream.host_start')
+
+        return (
+            EventEnvelope(
+                type='stream.ready',
+                requestId=event.request_id,
+                roomId=event.room_id,
+                peerId=event.peer_id,
+                payload={
+                    'roomId': event.room_id,
+                    'serverTimestamp': self._sync_service.server_timestamp_ms(),
+                    'streamStartedAt': event.payload.get('streamStartedAt'),
+                    'targetBufferMs': event.payload.get('targetBufferMs', 220),
+                },
+            ),
+            [
+                EventEnvelope(
+                    type='stream.meta',
+                    roomId=event.room_id,
+                    peerId=event.peer_id,
+                    payload={
+                        'roomId': event.room_id,
+                        'streamStartedAt': event.payload.get('streamStartedAt'),
+                        'targetBufferMs': event.payload.get('targetBufferMs', 220),
+                        'serverTime': self._sync_service.server_timestamp_ms(),
+                    },
+                )
+            ],
+        )
+
+    def _handle_stream_host_stop(
+        self, event: EventEnvelope
+    ) -> tuple[EventEnvelope, list[EventEnvelope]]:
+        if event.room_id is None:
+            raise RoomError('roomId is required for stream.host_stop')
+
+        return (
+            EventEnvelope(
+                type='stream.host_stopped',
+                requestId=event.request_id,
+                roomId=event.room_id,
+                peerId=event.peer_id,
+                payload={'roomId': event.room_id},
+            ),
+            [
+                EventEnvelope(
+                    type='stream.host_stopped',
+                    roomId=event.room_id,
+                    peerId=event.peer_id,
+                    payload={'roomId': event.room_id},
+                )
+            ],
+        )
+
+    def _handle_stream_listener_join(
+        self, event: EventEnvelope
+    ) -> tuple[EventEnvelope, list[EventEnvelope]]:
+        if event.room_id is None:
+            raise RoomError('roomId is required for stream.listener_join')
+
+        return (
+            EventEnvelope(
+                type='stream.listener_joined',
+                requestId=event.request_id,
+                roomId=event.room_id,
+                peerId=event.peer_id,
+                payload={'roomId': event.room_id},
+            ),
+            [],
+        )
+
+    def _handle_stream_audio_chunk(
+        self, event: EventEnvelope
+    ) -> tuple[EventEnvelope, list[EventEnvelope]]:
+        if event.room_id is None:
+            raise RoomError('roomId is required for stream.audio_chunk')
+
+        room = self._room_service.get_room(event.room_id)
+        if room is None or room.status != 'active':
+            raise RoomError('Room is not active for stream.audio_chunk')
+
+        chunk_payload = dict(event.payload)
+        chunk_payload['serverTime'] = self._sync_service.server_timestamp_ms()
+        if 'roomId' not in chunk_payload:
+            chunk_payload['roomId'] = event.room_id
+
+        return (
+            EventEnvelope(
+                type='stream.audio_accepted',
+                requestId=event.request_id,
+                roomId=event.room_id,
+                peerId=event.peer_id,
+                payload={
+                    'roomId': event.room_id,
+                    'sequence': chunk_payload.get('sequence'),
+                },
+            ),
+            [
+                EventEnvelope(
+                    type='stream.audio_chunk',
+                    roomId=event.room_id,
+                    peerId=event.peer_id,
+                    payload=chunk_payload,
+                )
+            ],
+        )
+
+    def _handle_stream_ping(
+        self, event: EventEnvelope
+    ) -> tuple[EventEnvelope, list[EventEnvelope]]:
+        return (
+            EventEnvelope(
+                type='stream.pong',
+                requestId=event.request_id,
+                roomId=event.room_id,
+                peerId=event.peer_id,
+                payload={
+                    'serverTime': self._sync_service.server_timestamp_ms(),
+                    'clientTime': event.payload.get('clientTime'),
+                },
+            ),
+            [],
+        )
+
     def handle_disconnect(self, *, room_id: str, peer_id: str) -> list[EventEnvelope]:
         room = self._room_service.leave_room(room_id=room_id, peer_id=peer_id)
         events = [
@@ -167,7 +322,12 @@ class SignalingService:
                 roomId=room_id,
                 peerId=peer_id,
                 payload={'peerId': peer_id},
-            )
+            ),
+            EventEnvelope(
+                type='stream.listener_count',
+                roomId=room_id,
+                payload={'count': len(room.participants) if room is not None else 0},
+            ),
         ]
         if room is not None and room.status == 'closed':
             events.append(

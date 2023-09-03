@@ -214,5 +214,10 @@ class WebSocketEventHandler:
             'room.leave': 'room.leave_failed',
             'sync.ping': 'sync.failed',
             'server.hello': 'server.auth_failed',
+            'stream.host_start': 'stream.failed',
+            'stream.host_stop': 'stream.failed',
+            'stream.listener_join': 'stream.failed',
+            'stream.audio_chunk': 'stream.failed',
+            'stream.ping': 'stream.failed',
         }
         return mapping.get(request_type or '', 'error')

@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -12,9 +13,15 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     companion object {
         private const val REQUEST_MEDIA_PROJECTION = 41002
+        private const val TAG = "SyncWave.MainActivity"
 
         var mediaProjectionResultCode: Int = Activity.RESULT_CANCELED
         var mediaProjectionData: Intent? = null
+
+        fun clearProjectionPermission() {
+            mediaProjectionResultCode = Activity.RESULT_CANCELED
+            mediaProjectionData = null
+        }
     }
 
     private val methodChannelName = "dev.rajujha.syncwave/audio_capture"
@@ -39,13 +46,39 @@ class MainActivity : FlutterActivity() {
                     "startCapture" -> {
                         val useSystemAudio = call.argument<Boolean>("useSystemAudio") ?: true
                         val useMicrophone = call.argument<Boolean>("useMicrophone") ?: false
-                        startAudioCaptureService(useSystemAudio = useSystemAudio, useMicrophone = useMicrophone)
-                        result.success(true)
+                        try {
+                            Log.d(
+                                TAG,
+                                "startCapture requested useSystemAudio=$useSystemAudio useMicrophone=$useMicrophone",
+                            )
+                            startAudioCaptureService(
+                                useSystemAudio = useSystemAudio,
+                                useMicrophone = useMicrophone,
+                            )
+                            result.success(true)
+                        } catch (error: Exception) {
+                            Log.e(TAG, "Failed to start capture service", error)
+                            result.error(
+                                "start_capture_failed",
+                                error.message ?: "Unable to start capture service.",
+                                null,
+                            )
+                        }
                     }
 
                     "stopCapture" -> {
-                        stopAudioCaptureService()
-                        result.success(true)
+                        try {
+                            Log.d(TAG, "stopCapture requested")
+                            stopAudioCaptureService()
+                            result.success(true)
+                        } catch (error: Exception) {
+                            Log.e(TAG, "Failed to stop capture service", error)
+                            result.error(
+                                "stop_capture_failed",
+                                error.message ?: "Unable to stop capture service.",
+                                null,
+                            )
+                        }
                     }
 
                     else -> result.notImplemented()
@@ -68,17 +101,20 @@ class MainActivity : FlutterActivity() {
 
     private fun requestCapturePermission(result: MethodChannel.Result) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            Log.w(TAG, "MediaProjection requested on unsupported Android version")
             result.success(false)
             return
         }
 
         if (pendingPermissionResult != null) {
+            Log.w(TAG, "MediaProjection permission request already in progress")
             result.error("permission_in_progress", "Permission request already in progress.", null)
             return
         }
 
         val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         pendingPermissionResult = result
+        Log.d(TAG, "Launching MediaProjection permission dialog")
         @Suppress("DEPRECATION")
         startActivityForResult(manager.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION)
     }
@@ -112,11 +148,23 @@ class MainActivity : FlutterActivity() {
             return
         }
 
-        mediaProjectionResultCode = resultCode
-        mediaProjectionData = data
-
         val granted = resultCode == Activity.RESULT_OK && data != null
+        if (granted) {
+            mediaProjectionResultCode = resultCode
+            mediaProjectionData = data
+            Log.d(TAG, "MediaProjection permission granted")
+        } else {
+            clearProjectionPermission()
+            Log.w(TAG, "MediaProjection permission denied or canceled")
+        }
+
         pendingPermissionResult?.success(granted)
         pendingPermissionResult = null
+    }
+
+    override fun onDestroy() {
+        pendingPermissionResult?.success(false)
+        pendingPermissionResult = null
+        super.onDestroy()
     }
 }

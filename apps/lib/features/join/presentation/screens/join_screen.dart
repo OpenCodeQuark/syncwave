@@ -5,6 +5,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
+import '../../../../shared/widgets/section_card.dart';
 import '../../../settings/presentation/controllers/remote_server_connection_controller.dart';
 import '../../../settings/presentation/controllers/streaming_settings_controller.dart';
 import '../../../streaming/models/internet_mode_gate.dart';
@@ -29,32 +30,46 @@ class JoinScreen extends ConsumerWidget {
 
     return PrimaryScaffold(
       title: 'Join Session',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 12,
+      child: ListView(
         children: [
-          const Text(
-            'Local rooms are the default. Scan or enter local room info to join over Wi-Fi/hotspot.',
+          const SectionCard(
+            title: 'Local Join',
+            subtitle:
+                'Local rooms are the default. Use the same Wi-Fi or hotspot as the host.',
+            child: SizedBox.shrink(),
           ),
-          FilledButton.icon(
-            onPressed: () => context.push(RoutePaths.joinScan),
-            icon: PhosphorIcon(PhosphorIcons.scan()),
-            label: const Text('Scan QR'),
-          ),
-          OutlinedButton.icon(
-            onPressed: () => context.push(RoutePaths.joinManual),
-            icon: PhosphorIcon(PhosphorIcons.keyboard()),
-            label: const Text('Manual Join'),
-          ),
-          if (internetEnabled)
-            OutlinedButton.icon(
-              onPressed: () => context.push(RoutePaths.joinManual),
-              icon: PhosphorIcon(PhosphorIcons.globe()),
-              label: const Text('Join Internet Session'),
+          const SizedBox(height: 12),
+          SectionCard(
+            title: 'Join Methods',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 10,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => context.push(RoutePaths.joinScan),
+                  icon: PhosphorIcon(PhosphorIcons.scan()),
+                  label: const Text('Scan QR'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => context.push(RoutePaths.joinManual),
+                  icon: PhosphorIcon(PhosphorIcons.keyboard()),
+                  label: const Text('Manual Join'),
+                ),
+                if (internetEnabled)
+                  OutlinedButton.icon(
+                    onPressed: () => context.push(RoutePaths.joinManual),
+                    icon: PhosphorIcon(PhosphorIcons.globe()),
+                    label: const Text('Join Internet Session'),
+                  ),
+              ],
             ),
-          const Spacer(),
-          const Text(
-            'iOS supports listener mode. Android supports listener and host modes.',
+          ),
+          const SizedBox(height: 12),
+          const SectionCard(
+            title: 'Platform Note',
+            child: Text(
+              'iOS supports listener mode. Android supports listener and host modes.',
+            ),
           ),
         ],
       ),

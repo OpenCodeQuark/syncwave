@@ -11,6 +11,14 @@ Object? _readRoomPinProtected(Map<dynamic, dynamic> json, String key) {
 
 bool _boolFromDynamic(Object? value) => value == true;
 
+Object? _readHost(Map<dynamic, dynamic> json, String key) {
+  return json[key] ?? json['hostAddress'];
+}
+
+Object? _readPort(Map<dynamic, dynamic> json, String key) {
+  return json[key] ?? json['hostPort'];
+}
+
 @freezed
 abstract class JoinQrPayload with _$JoinQrPayload {
   const factory JoinQrPayload({
@@ -20,7 +28,12 @@ abstract class JoinQrPayload with _$JoinQrPayload {
     @JsonKey(fromJson: streamingModeFromJson, toJson: streamingModeToJson)
     required StreamingMode mode,
     required String roomId,
+    String? protocolVersion,
     String? joinUrl,
+    String? joinPath,
+    String? wsPath,
+    @JsonKey(readValue: _readHost) String? host,
+    @JsonKey(readValue: _readPort) int? port,
     String? hostAddress,
     int? hostPort,
     String? serverUrl,

@@ -2,6 +2,10 @@ import 'package:permission_handler/permission_handler.dart';
 
 class PermissionService {
   Future<bool> ensureMicrophonePermission() async {
+    return ensureAudioCapturePermission();
+  }
+
+  Future<bool> ensureAudioCapturePermission() async {
     final status = await Permission.microphone.request();
     return status.isGranted;
   }

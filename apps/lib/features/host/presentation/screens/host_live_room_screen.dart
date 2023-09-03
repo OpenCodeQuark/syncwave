@@ -7,9 +7,11 @@ import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
-import '../../../../shared/widgets/syncwave_card.dart';
+import '../../../../shared/widgets/section_card.dart';
+import '../../../../shared/widgets/status_badge.dart';
 import '../../../streaming/models/hosted_session.dart';
 import '../../../streaming/models/live_broadcast_status.dart';
 import '../../../streaming/models/streaming_mode.dart';
@@ -29,11 +31,13 @@ class HostLiveRoomScreen extends ConsumerStatefulWidget {
   ConsumerState<HostLiveRoomScreen> createState() => _HostLiveRoomScreenState();
 }
 
-class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen> {
+class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen>
+    with WidgetsBindingObserver {
   StreamSubscription<LiveBroadcastStatus>? _statusSubscription;
   LiveBroadcastStatus _runtimeStatus = const LiveBroadcastStatus.idle();
   bool _starting = false;
   bool _stopping = false;
+  bool _includePinInQr = false;
 
   HostedSession get _session {
     return widget.hostedSession ??
@@ -52,6 +56,7 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final service = ref.read(liveAudioBroadcastServiceProvider);
     _runtimeStatus = service.status;
     _statusSubscription = service.statusStream.listen((status) {
@@ -68,10 +73,17 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.detached) {
+      unawaited(_stopBroadcast());
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _statusSubscription?.cancel();
-    final service = ref.read(liveAudioBroadcastServiceProvider);
-    unawaited(service.stop());
+    unawaited(_stopBroadcast());
     super.dispose();
   }
 
@@ -109,24 +121,100 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen> {
     _stopping = true;
     try {
       await ref.read(liveAudioBroadcastServiceProvider).stop();
+      await ref.read(streamingCoordinatorProvider).stopLocalSession();
     } finally {
       _stopping = false;
     }
   }
 
+  Future<void> _copyToClipboard(String value, String successText) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(successText)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final coordinator = ref.read(streamingCoordinatorProvider);
+    final service = ref.read(liveAudioBroadcastServiceProvider);
+    final appConfig = ref.read(appConfigProvider);
     final session = _session;
 
+    final localAvailable =
+        session.hostAddress != null &&
+        session.hostAddress!.trim().isNotEmpty &&
+        session.mode == StreamingMode.local;
+    final wanAvailable =
+        session.serverUrl != null &&
+        session.serverUrl!.trim().isNotEmpty &&
+        session.wanRoomId != null &&
+        session.wanRoomId!.trim().isNotEmpty;
+
+    String? localJoinLink;
+    String? localJoinLinkWithPin;
+    String? internetJoinLink;
+    String? internetJoinLinkWithPin;
     String? qrPayload;
-    String? joinLink;
+    String? preferredJoinLink;
+    String preferredRoomCode = session.roomId;
+
     try {
-      qrPayload = coordinator.buildPrimaryQrPayload(session);
-      joinLink = _runtimeStatus.joinUrl ?? coordinator.buildJoinUrl(session);
+      if (localAvailable) {
+        localJoinLink = coordinator.buildJoinUrl(
+          session,
+          includeRoomPin: false,
+        );
+        if (session.roomPinProtected) {
+          localJoinLinkWithPin = coordinator.buildJoinUrl(
+            session,
+            includeRoomPin: true,
+          );
+        }
+      }
+      if (wanAvailable) {
+        internetJoinLink = coordinator.buildInternetJoinUrl(
+          session,
+          includeRoomPin: false,
+        );
+        if (session.roomPinProtected) {
+          internetJoinLinkWithPin = coordinator.buildInternetJoinUrl(
+            session,
+            includeRoomPin: true,
+          );
+        }
+      }
+
+      preferredJoinLink = localJoinLink ?? internetJoinLink;
+      if (localAvailable) {
+        qrPayload = coordinator.buildAppQrPayload(
+          session,
+          appVersion: appConfig.appVersion,
+          includeRoomPin: _includePinInQr,
+        );
+      } else if (wanAvailable) {
+        qrPayload = coordinator.buildAppQrPayload(
+          session.copyWith(
+            mode: StreamingMode.internet,
+            roomId: session.wanRoomId!,
+            hostAddress: null,
+            hostPort: null,
+          ),
+          appVersion: appConfig.appVersion,
+          includeRoomPin: _includePinInQr,
+        );
+        preferredRoomCode = session.wanRoomId!;
+      }
     } on FormatException {
       qrPayload = null;
-      joinLink = null;
+      localJoinLink = null;
+      localJoinLinkWithPin = null;
+      internetJoinLink = null;
+      internetJoinLinkWithPin = null;
+      preferredJoinLink = null;
     }
 
     final endpointDescription = session.mode == StreamingMode.local
@@ -137,7 +225,8 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen> {
       title: 'Live Broadcast',
       child: ListView(
         children: [
-          SyncWaveCard(
+          SectionCard(
+            title: 'Room',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 8,
@@ -149,30 +238,41 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text('Join endpoint: $endpointDescription'),
+                Text('Primary endpoint: $endpointDescription'),
+                if (localAvailable)
+                  Text('LAN room: ${session.roomId}')
+                else
+                  const Text('LAN room: unavailable'),
+                if (wanAvailable)
+                  Text('WAN room: ${session.wanRoomId}')
+                else
+                  const Text('WAN room: unavailable'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SectionCard(
+            title: 'Broadcast Status',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 8,
+              children: [
+                StatusBadge(
+                  label: _statusLabel(_runtimeStatus),
+                  tone: switch (_runtimeStatus.phase) {
+                    LiveBroadcastPhase.running => StatusBadgeTone.success,
+                    LiveBroadcastPhase.starting ||
+                    LiveBroadcastPhase.stopping => StatusBadgeTone.warning,
+                    LiveBroadcastPhase.error => StatusBadgeTone.danger,
+                    _ => StatusBadgeTone.neutral,
+                  },
+                ),
+                Text('Connected listeners: ${_runtimeStatus.listenerCount}'),
                 Text(
                   session.roomPinProtected
                       ? 'Room PIN protection: enabled'
                       : 'Room PIN protection: disabled',
                 ),
-                Text(
-                  'Audio Source: ${session.audioSourceEnabled ? 'On' : 'Off'}',
-                ),
-                Text('Microphone: ${session.microphoneEnabled ? 'On' : 'Off'}'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          SyncWaveCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 8,
-              children: [
-                Text(
-                  _statusLabel(_runtimeStatus.phase),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                Text('Connected listeners: ${_runtimeStatus.listenerCount}'),
                 if (_runtimeStatus.message != null)
                   Text(_runtimeStatus.message!),
                 if (_runtimeStatus.errorCode != null)
@@ -181,17 +281,66 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          SyncWaveCard(
+          SectionCard(
+            title: 'Live Controls',
+            child: Row(
+              children: [
+                IconButton.filledTonal(
+                  onPressed: _runtimeStatus.phase == LiveBroadcastPhase.running
+                      ? () async {
+                          await service.toggleSystemAudioMute();
+                        }
+                      : null,
+                  icon: PhosphorIcon(
+                    _runtimeStatus.systemAudioMuted
+                        ? PhosphorIcons.speakerSlash()
+                        : PhosphorIcons.speakerHigh(),
+                  ),
+                  tooltip: _runtimeStatus.systemAudioMuted
+                      ? 'Unmute Audio Source'
+                      : 'Mute Audio Source',
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Microphone support coming soon.'),
+                      ),
+                    );
+                  },
+                  icon: PhosphorIcon(PhosphorIcons.microphoneSlash()),
+                  tooltip: 'Microphone support coming soon',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SectionCard(
+            title: 'Join QR',
+            subtitle: 'Scan this QR from another device to join quickly.',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 8,
               children: [
-                const Text(
-                  'Join QR',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const Text(
-                  'Scan this SyncWave deep link from another device on the same network.',
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _includePinInQr,
+                  onChanged: session.roomPinProtected
+                      ? (value) {
+                          setState(() {
+                            _includePinInQr = value;
+                          });
+                        }
+                      : null,
+                  title: const Text('Include PIN in QR'),
+                  subtitle: Text(
+                    session.roomPinProtected
+                        ? (_includePinInQr
+                              ? 'PIN is included in QR payload.'
+                              : 'PIN is hidden. Joiner will be prompted.')
+                        : 'Room has no PIN.',
+                  ),
                 ),
                 if (qrPayload != null)
                   Center(
@@ -208,41 +357,46 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen> {
                   runSpacing: 8,
                   children: [
                     FilledButton.icon(
-                      onPressed: joinLink == null
+                      onPressed: preferredJoinLink == null
                           ? null
-                          : () async {
-                              await Clipboard.setData(
-                                ClipboardData(text: joinLink!),
-                              );
-                              if (!context.mounted) {
-                                return;
-                              }
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Join link copied'),
-                                ),
-                              );
-                            },
+                          : () => _copyToClipboard(
+                              preferredJoinLink!,
+                              'Join link copied',
+                            ),
                       icon: PhosphorIcon(PhosphorIcons.copy()),
                       label: const Text('Copy Join Link'),
                     ),
+                    if (session.roomPinProtected &&
+                        (localJoinLinkWithPin != null ||
+                            internetJoinLinkWithPin != null))
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          final linkWithPin =
+                              localJoinLinkWithPin ?? internetJoinLinkWithPin;
+                          if (linkWithPin == null) {
+                            return;
+                          }
+                          _copyToClipboard(
+                            linkWithPin,
+                            'Join link with PIN copied',
+                          );
+                        },
+                        icon: PhosphorIcon(PhosphorIcons.lockKey()),
+                        label: const Text('Copy Link + PIN'),
+                      ),
                     OutlinedButton.icon(
-                      onPressed: () async {
-                        await Clipboard.setData(
-                          ClipboardData(text: session.roomId),
-                        );
-                        if (!context.mounted) {
-                          return;
-                        }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Room code copied')),
-                        );
-                      },
+                      onPressed: () => _copyToClipboard(
+                        preferredRoomCode,
+                        'Room code copied',
+                      ),
                       icon: PhosphorIcon(PhosphorIcons.tag()),
                       label: const Text('Copy Room Code'),
                     ),
                   ],
                 ),
+                if (localJoinLink != null) Text('LAN URL: $localJoinLink'),
+                if (internetJoinLink != null)
+                  Text('WAN URL: $internetJoinLink'),
               ],
             ),
           ),
@@ -265,20 +419,24 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen> {
     );
   }
 
-  String _statusLabel(LiveBroadcastPhase phase) {
-    switch (phase) {
+  String _statusLabel(LiveBroadcastStatus status) {
+    if (status.phase == LiveBroadcastPhase.running && status.systemAudioMuted) {
+      return 'Muted';
+    }
+
+    switch (status.phase) {
       case LiveBroadcastPhase.idle:
-        return 'Broadcast idle';
+        return 'Stopped';
       case LiveBroadcastPhase.blocked:
         return 'Broadcast blocked';
       case LiveBroadcastPhase.starting:
-        return 'Starting broadcast...';
+        return 'Starting';
       case LiveBroadcastPhase.running:
-        return 'Broadcast is live';
+        return 'Broadcasting';
       case LiveBroadcastPhase.stopping:
-        return 'Stopping broadcast...';
+        return 'Stopping';
       case LiveBroadcastPhase.error:
-        return 'Broadcast error';
+        return 'Error';
     }
   }
 }

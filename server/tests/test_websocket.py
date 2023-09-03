@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from contextlib import contextmanager
 from typing import Iterator, Optional
 
@@ -67,6 +68,7 @@ def create_room(websocket, *, request_id: str = 'create-1') -> str:
     )
     response = websocket.receive_json()
     assert response['type'] == 'room.created'
+    assert re.match(r'^WAN-[A-Z0-9]{5}$', response['roomId'])
     return response['roomId']
 
 
@@ -226,7 +228,116 @@ def test_disconnect_cleanup_broadcasts_participant_left_and_room_closed() -> Non
 
                 event_one = listener.receive_json()
                 event_two = listener.receive_json()
-                event_types = {event_one['type'], event_two['type']}
+                event_three = listener.receive_json()
+                event_types = {event_one['type'], event_two['type'], event_three['type']}
 
     assert 'participant.left' in event_types
+    assert 'stream.listener_count' in event_types
     assert 'room.closed' in event_types
+
+
+def test_stream_ping_returns_server_time() -> None:
+    with make_client() as client:
+        with client.websocket_connect('/ws?peerId=peer_stream_ping') as websocket:
+            websocket.receive_json()
+            assert send_hello(websocket)['type'] == 'server.ready'
+            websocket.send_json(
+                {
+                    'type': 'stream.ping',
+                    'requestId': 'stream-ping-1',
+                    'payload': {'clientTime': 12345},
+                }
+            )
+            response = websocket.receive_json()
+
+    assert response['type'] == 'stream.pong'
+    assert 'serverTime' in response['payload']
+    assert response['payload']['clientTime'] == 12345
+
+
+def test_stream_audio_chunk_routes_to_room_listeners() -> None:
+    with make_client() as client:
+        with client.websocket_connect('/ws?peerId=host_stream') as host:
+            host.receive_json()
+            assert send_hello(host)['type'] == 'server.ready'
+            room_id = create_room(host)
+
+            with client.websocket_connect('/ws?peerId=listener_stream') as listener:
+                listener.receive_json()
+                assert send_hello(listener)['type'] == 'server.ready'
+
+                listener.send_json(
+                    {
+                        'type': 'room.join',
+                        'requestId': 'join-stream-1',
+                        'roomId': room_id,
+                        'payload': {'deviceName': 'Listener', 'platform': 'ios'},
+                    }
+                )
+                joined = listener.receive_json()
+                assert joined['type'] == 'room.joined'
+
+                host.receive_json()  # participant.joined
+                host.receive_json()  # stream.listener_count
+
+                host.send_json(
+                    {
+                        'type': 'stream.audio_chunk',
+                        'requestId': 'audio-1',
+                        'roomId': room_id,
+                        'payload': {
+                            'sequence': 1,
+                            'sampleRate': 48000,
+                            'channelCount': 1,
+                            'durationMs': 40,
+                            'format': 'pcm16',
+                            'payload': 'AAAB',
+                        },
+                    }
+                )
+                accepted = host.receive_json()
+                routed = listener.receive_json()
+
+    assert accepted['type'] == 'stream.audio_accepted'
+    assert routed['type'] == 'stream.audio_chunk'
+    assert routed['payload']['sequence'] == 1
+
+
+def test_listener_count_updates_on_join_and_leave() -> None:
+    with make_client() as client:
+        with client.websocket_connect('/ws?peerId=host_count') as host:
+            host.receive_json()
+            assert send_hello(host)['type'] == 'server.ready'
+            room_id = create_room(host)
+
+            with client.websocket_connect('/ws?peerId=listener_count') as listener:
+                listener.receive_json()
+                assert send_hello(listener)['type'] == 'server.ready'
+                listener.send_json(
+                    {
+                        'type': 'room.join',
+                        'requestId': 'join-count-1',
+                        'roomId': room_id,
+                        'payload': {'deviceName': 'Listener', 'platform': 'android'},
+                    }
+                )
+                listener.receive_json()  # room.joined
+                host.receive_json()  # participant.joined
+                join_count = host.receive_json()
+
+                listener.send_json(
+                    {
+                        'type': 'room.leave',
+                        'requestId': 'leave-count-1',
+                        'roomId': room_id,
+                        'payload': {},
+                    }
+                )
+                listener.receive_json()  # room.left
+                leave_event = host.receive_json()
+                leave_count = host.receive_json()
+
+    assert join_count['type'] == 'stream.listener_count'
+    assert join_count['payload']['count'] >= 2
+    assert leave_event['type'] == 'participant.left'
+    assert leave_count['type'] == 'stream.listener_count'

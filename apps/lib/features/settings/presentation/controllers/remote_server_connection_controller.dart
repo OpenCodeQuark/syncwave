@@ -7,7 +7,8 @@ import '../../../streaming/models/remote_server_status.dart';
 import '../../../streaming/providers/streaming_providers.dart';
 import '../../../streaming/services/remote_server_status_service.dart';
 
-class RemoteServerConnectionController extends AsyncNotifier<RemoteServerStatus> {
+class RemoteServerConnectionController
+    extends AsyncNotifier<RemoteServerStatus> {
   late final RemoteServerStatusService _service;
   StreamSubscription<RemoteServerStatus>? _statusSubscription;
 

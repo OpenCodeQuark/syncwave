@@ -8,6 +8,9 @@ class LiveBroadcastStatus {
     this.listenerCount = 0,
     this.useSystemAudio = true,
     this.useMicrophone = false,
+    this.systemAudioMuted = false,
+    this.microphoneMuted = true,
+    this.microphoneControlAvailable = false,
     this.errorCode,
     this.updatedAt,
   });
@@ -19,6 +22,9 @@ class LiveBroadcastStatus {
       listenerCount = 0,
       useSystemAudio = true,
       useMicrophone = false,
+      systemAudioMuted = false,
+      microphoneMuted = true,
+      microphoneControlAvailable = false,
       errorCode = null,
       updatedAt = null;
 
@@ -28,6 +34,9 @@ class LiveBroadcastStatus {
   final int listenerCount;
   final bool useSystemAudio;
   final bool useMicrophone;
+  final bool systemAudioMuted;
+  final bool microphoneMuted;
+  final bool microphoneControlAvailable;
   final String? errorCode;
   final DateTime? updatedAt;
 
@@ -45,6 +54,9 @@ class LiveBroadcastStatus {
     int? listenerCount,
     bool? useSystemAudio,
     bool? useMicrophone,
+    bool? systemAudioMuted,
+    bool? microphoneMuted,
+    bool? microphoneControlAvailable,
     String? errorCode,
     bool clearErrorCode = false,
     DateTime? updatedAt,
@@ -56,6 +68,10 @@ class LiveBroadcastStatus {
       listenerCount: listenerCount ?? this.listenerCount,
       useSystemAudio: useSystemAudio ?? this.useSystemAudio,
       useMicrophone: useMicrophone ?? this.useMicrophone,
+      systemAudioMuted: systemAudioMuted ?? this.systemAudioMuted,
+      microphoneMuted: microphoneMuted ?? this.microphoneMuted,
+      microphoneControlAvailable:
+          microphoneControlAvailable ?? this.microphoneControlAvailable,
       errorCode: clearErrorCode ? null : (errorCode ?? this.errorCode),
       updatedAt: updatedAt ?? this.updatedAt,
     );

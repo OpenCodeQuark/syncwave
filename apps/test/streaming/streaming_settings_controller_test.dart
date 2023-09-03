@@ -15,7 +15,9 @@ void main() {
 
     await container.read(streamingSettingsControllerProvider.future);
 
-    final notifier = container.read(streamingSettingsControllerProvider.notifier);
+    final notifier = container.read(
+      streamingSettingsControllerProvider.notifier,
+    );
 
     expect(
       () => notifier.saveInternetStreamingConfig(
@@ -39,7 +41,9 @@ void main() {
 
     await container.read(streamingSettingsControllerProvider.future);
 
-    final notifier = container.read(streamingSettingsControllerProvider.notifier);
+    final notifier = container.read(
+      streamingSettingsControllerProvider.notifier,
+    );
 
     await notifier.saveInternetStreamingConfig(
       internetEnabled: true,

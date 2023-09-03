@@ -22,29 +22,23 @@ class OnboardingScreen extends StatelessWidget {
                 const SyncWaveCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: 12,
+                    spacing: 10,
                     children: [
                       Text(
-                        'Local-first synchronized listening.',
+                        'Local-first synchronized listening',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
-                        'Local streaming works over Wi-Fi or hotspot without internet or external server.',
+                        'Local streaming works over Wi-Fi or hotspot without any external server.',
                       ),
                       Text(
-                        'Android can host local broadcast. iOS is listener-first due platform system audio restrictions.',
+                        'Android hosts broadcasts. iOS is listener-first in v1.0.0.',
                       ),
                       Text(
-                        'Internet streaming is optional and must be configured manually in Settings.',
-                      ),
-                      Text(
-                        'Host and listeners should be on the same Wi-Fi/hotspot in Local Mode.',
-                      ),
-                      Text(
-                        'v1.0.0 includes live Android host broadcasting with local-first networking.',
+                        'Optional internet signaling can be configured in Settings when needed.',
                       ),
                     ],
                   ),
@@ -56,14 +50,14 @@ class OnboardingScreen extends StatelessWidget {
                     spacing: 8,
                     children: [
                       Text(
-                        'Permissions and upcoming capture modes',
+                        'Permissions',
                         style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                       Text(
-                        'Notification permission is requested when starting host broadcast for foreground service status.',
+                        'Notification permission is requested when hosting so foreground broadcast status remains visible.',
                       ),
                       Text(
-                        'System audio and optional microphone capture are available on supported Android hosts.',
+                        'Android requires a screen-share style prompt for system audio capture.',
                       ),
                     ],
                   ),

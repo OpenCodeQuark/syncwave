@@ -12,6 +12,9 @@ class JoinLinkService {
     : _pinValidationService = pinValidationService;
 
   final PinValidationService _pinValidationService;
+  final _roomCodePattern = RegExp(
+    r'^(LAN-[A-Z0-9]{5}|WAN-[A-Z0-9]{5}|SW-[A-Z0-9]{4}-[A-Z0-9]{2})$',
+  );
 
   String buildPrimaryQrPayload(
     HostedSession session, {
@@ -31,7 +34,11 @@ class JoinLinkService {
     );
   }
 
-  String buildAppQrPayload(HostedSession session, {String? appVersion}) {
+  String buildAppQrPayload(
+    HostedSession session, {
+    String? appVersion,
+    bool includeRoomPin = false,
+  }) {
     final joinTarget = RoomJoinTarget(
       mode: session.mode,
       roomId: session.roomId,
@@ -41,6 +48,15 @@ class JoinLinkService {
       pin: session.pin,
       roomPinProtected: session.roomPinProtected,
     );
+    final joinUrl = buildJoinUri(joinTarget, includeRoomPin: includeRoomPin);
+    final parsedJoinUrl = Uri.tryParse(joinUrl);
+    final effectivePin = includeRoomPin ? session.pin : null;
+    final host = session.mode == StreamingMode.local
+        ? session.hostAddress
+        : parsedJoinUrl?.host;
+    final port = session.mode == StreamingMode.local
+        ? session.hostPort
+        : (parsedJoinUrl?.hasPort == true ? parsedJoinUrl?.port : null);
 
     final payload = JoinQrPayload(
       app: 'syncwave',
@@ -48,11 +64,16 @@ class JoinLinkService {
       appVersion: appVersion,
       mode: session.mode,
       roomId: session.roomId,
-      joinUrl: buildJoinUri(joinTarget, includeRoomPin: false),
+      protocolVersion: AppConfig.fromEnvironment().protocolVersion,
+      joinUrl: joinUrl,
+      joinPath: '/stream/join',
+      wsPath: session.mode == StreamingMode.internet ? '/ws' : '/stream/audio',
+      host: host,
+      port: port,
       hostAddress: session.hostAddress,
       hostPort: session.hostPort,
       serverUrl: session.serverUrl,
-      pin: session.pin,
+      pin: effectivePin,
       roomPinProtected: session.roomPinProtected,
     );
 
@@ -134,9 +155,11 @@ class JoinLinkService {
     return RoomJoinTarget(
       mode: payload.mode,
       roomId: payload.roomId,
-      hostAddress: payload.hostAddress ?? joinUri?.host,
+      hostAddress: payload.host ?? payload.hostAddress ?? joinUri?.host,
       hostPort:
-          payload.hostPort ?? (joinUri?.hasPort == true ? joinUri?.port : null),
+          payload.port ??
+          payload.hostPort ??
+          (joinUri?.hasPort == true ? joinUri?.port : null),
       serverUrl:
           payload.serverUrl ??
           (payload.mode == StreamingMode.internet ? payload.joinUrl : null),
@@ -203,6 +226,11 @@ class JoinLinkService {
         path: '/stream/join',
         queryParameters: {'room': roomId},
       ).toString(),
+      protocolVersion: AppConfig.fromEnvironment().protocolVersion,
+      joinPath: '/stream/join',
+      wsPath: '/stream/audio',
+      host: hostAddress,
+      port: hostPort,
       hostAddress: hostAddress,
       hostPort: hostPort,
       pin: normalizedPin,
@@ -233,6 +261,11 @@ class JoinLinkService {
             queryParameters: {'room': roomId},
           )
           .toString(),
+      protocolVersion: AppConfig.fromEnvironment().protocolVersion,
+      joinPath: '/stream/join',
+      wsPath: '/ws',
+      host: serverUri.host,
+      port: serverUri.hasPort ? serverUri.port : null,
       serverUrl: serverUrl,
       pin: normalizedPin,
       roomPinProtected: roomPinProtected,
@@ -247,6 +280,10 @@ class JoinLinkService {
     final parsed = Uri.tryParse(rawServerUrl.trim());
     if (parsed == null || parsed.host.isEmpty || parsed.scheme.isEmpty) {
       throw const FormatException('Invalid internet server URL.');
+    }
+    final host = parsed.host.trim().toLowerCase();
+    if (host == 'localhost' || host == '127.0.0.1' || host == '0.0.0.0') {
+      throw const FormatException('Internet server host is invalid.');
     }
 
     return parsed;
@@ -277,6 +314,9 @@ class JoinLinkService {
       if (effectiveRoom == null || effectiveRoom.isEmpty) {
         throw const FormatException('syncwave:// join link is missing room.');
       }
+      if (!_roomCodePattern.hasMatch(effectiveRoom)) {
+        throw const FormatException('syncwave:// room format is invalid.');
+      }
 
       final pin = _pinValidationService.normalizeAndValidateOptional(
         uri.queryParameters['pin'],
@@ -292,16 +332,23 @@ class JoinLinkService {
             ? null
             : Uri(scheme: 'https', host: host, port: port).toString(),
         pin: pin,
-        roomPinProtected: pin != null,
+        roomPinProtected:
+            pin != null ||
+            uri.queryParameters['roomPinProtected'] == 'true' ||
+            uri.queryParameters['pinProtected'] == 'true',
       );
     }
 
     final hasStreamJoinPath = _isStreamJoinPath(uri.pathSegments);
     final effectiveRoom = (room == null || room.isEmpty)
-        ? (hasStreamJoinPath ? 'SW-UNKNOWN' : null)
+        ? (hasStreamJoinPath ? 'LAN-UNKWN' : null)
         : room.toUpperCase();
     if (effectiveRoom == null) {
       throw const FormatException('Join URL is missing room or roomId query.');
+    }
+    if (effectiveRoom != 'LAN-UNKWN' &&
+        !_roomCodePattern.hasMatch(effectiveRoom)) {
+      throw const FormatException('Join URL room code format is invalid.');
     }
 
     final pin = _pinValidationService.normalizeAndValidateOptional(
@@ -309,7 +356,9 @@ class JoinLinkService {
     );
 
     final normalizedHost = uri.host.trim().toLowerCase();
-    if (normalizedHost == 'localhost' || normalizedHost == '127.0.0.1') {
+    if (normalizedHost == 'localhost' ||
+        normalizedHost == '127.0.0.1' ||
+        normalizedHost == '0.0.0.0') {
       throw const FormatException(
         'Join URL host cannot use localhost or loopback.',
       );
@@ -325,7 +374,10 @@ class JoinLinkService {
       hostPort: uri.hasPort ? uri.port : null,
       serverUrl: isLocal ? null : uri.toString(),
       pin: pin,
-      roomPinProtected: pin != null,
+      roomPinProtected:
+          pin != null ||
+          uri.queryParameters['roomPinProtected'] == 'true' ||
+          uri.queryParameters['pinProtected'] == 'true',
     );
   }
 

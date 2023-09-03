@@ -12,23 +12,6 @@ from ..websocket.connection_manager import ConnectionManager
 router = APIRouter(tags=['system'])
 
 
-class RootResponse(BaseModel):
-    app: str
-    version: str
-    status: Literal['ok']
-    mode: Literal['optional-internet-signaling']
-    websocket: str
-    health: str
-    statusEndpoint: str
-
-
-class HealthResponse(BaseModel):
-    status: Literal['ok']
-    service: str
-    environment: str
-    timestamp: int
-
-
 class StatusResponse(BaseModel):
     app: str
     version: str
@@ -41,29 +24,6 @@ class StatusResponse(BaseModel):
     websocketPath: str
     supportedProtocolVersion: str
     authenticationRequired: bool
-
-
-@router.get('/', response_model=RootResponse)
-def root(settings: Settings = Depends(get_settings)) -> RootResponse:
-    return RootResponse(
-        app=settings.app_name,
-        version=settings.app_version,
-        status='ok',
-        mode='optional-internet-signaling',
-        websocket=settings.websocket_path,
-        health='/health',
-        statusEndpoint='/status',
-    )
-
-
-@router.get('/health', response_model=HealthResponse)
-def health(settings: Settings = Depends(get_settings)) -> HealthResponse:
-    return HealthResponse(
-        status='ok',
-        service=settings.app_name,
-        environment=settings.app_env,
-        timestamp=int(time.time() * 1000),
-    )
 
 
 @router.get('/status', response_model=StatusResponse)
@@ -85,3 +45,4 @@ def status(request: Request, settings: Settings = Depends(get_settings)) -> Stat
         supportedProtocolVersion=settings.protocol_version,
         authenticationRequired=settings.require_server_connection_pin,
     )
+

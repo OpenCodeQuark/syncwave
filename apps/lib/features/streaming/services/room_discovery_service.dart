@@ -17,7 +17,9 @@ class RoomDiscoveryService {
   final PinValidationService _pinValidationService;
   final NetworkInterfaceSelector _networkInterfaceSelector;
 
-  final _roomCodePattern = RegExp(r'^SW-[A-Z0-9]{4}-[A-Z0-9]{2}$');
+  final _roomCodePattern = RegExp(
+    r'^(LAN-[A-Z0-9]{5}|WAN-[A-Z0-9]{5}|SW-[A-Z0-9]{4}-[A-Z0-9]{2})$',
+  );
 
   RoomJoinTarget parseManualJoinInput(String input) {
     final trimmedInput = input.trim();
@@ -157,6 +159,7 @@ class RoomDiscoveryService {
             : Uri(scheme: 'https', host: host, port: port).toString(),
         pin: parsedPin,
         roomPinProtected:
+            parsedPin != null ||
             uri.queryParameters['roomPinProtected'] == 'true' ||
             uri.queryParameters['pinProtected'] == 'true',
       );
@@ -172,10 +175,10 @@ class RoomDiscoveryService {
     final roomFromPath = _extractRoomCodeFromPath(uri.pathSegments);
     final hasStreamJoinPath = _isStreamJoinPath(uri.pathSegments);
     final resolvedRoomId = (roomFromQuery ?? roomFromPath)?.toUpperCase();
-    final roomId = resolvedRoomId ?? (hasStreamJoinPath ? 'SW-UNKNOWN' : null);
+    final roomId = resolvedRoomId ?? (hasStreamJoinPath ? 'LAN-UNKWN' : null);
 
     if (roomId == null ||
-        (roomId != 'SW-UNKNOWN' && !_roomCodePattern.hasMatch(roomId))) {
+        (roomId != 'LAN-UNKWN' && !_roomCodePattern.hasMatch(roomId))) {
       throw const FormatException('Room ID is missing or invalid in join URL.');
     }
 
@@ -186,7 +189,8 @@ class RoomDiscoveryService {
     final hostAddress = uri.host.isEmpty ? null : uri.host;
     if (hostAddress != null &&
         (hostAddress.toLowerCase() == 'localhost' ||
-            hostAddress == '127.0.0.1')) {
+            hostAddress == '127.0.0.1' ||
+            hostAddress == '0.0.0.0')) {
       throw const FormatException(
         'Join URL host cannot use localhost or loopback.',
       );
@@ -202,7 +206,10 @@ class RoomDiscoveryService {
       hostPort: uri.hasPort ? uri.port : null,
       serverUrl: mode == StreamingMode.internet ? uri.toString() : null,
       pin: pin,
-      roomPinProtected: pin != null,
+      roomPinProtected:
+          pin != null ||
+          uri.queryParameters['roomPinProtected'] == 'true' ||
+          uri.queryParameters['pinProtected'] == 'true',
     );
   }
 

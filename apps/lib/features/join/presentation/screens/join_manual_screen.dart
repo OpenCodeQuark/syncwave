@@ -53,8 +53,7 @@ class _JoinManualScreenState extends ConsumerState<JoinManualScreen> {
             textInputAction: TextInputAction.next,
             decoration: const InputDecoration(
               labelText: 'Room code, join URL, or QR payload JSON',
-              hintText:
-                  'syncwave://join?host=192.168.1.20:9000&room=SW-8FD2-KQ',
+              hintText: 'syncwave://join?host=192.168.1.20:9000&room=LAN-R12B9',
             ),
           ),
           const SizedBox(height: 12),

@@ -1,74 +1,70 @@
 # Changelog
 
-## 1.0.0 - Local-First Live Broadcast Release
+## 1.0.0 - Public Release Hardening
 
 ### Added
-- Android live host capture pipeline:
-  - MediaProjection permission flow
-  - AudioPlaybackCapture-based system audio capture
-  - foreground broadcast service lifecycle
-  - optional microphone overlay path
-- Local audio broadcast server for LAN/hotspot sessions with browser listener endpoint (`/stream/join`, `/stream/audio`).
-- Automatic host networking behavior:
-  - private IPv4 interface selection priority (Wi-Fi -> hotspot -> other private)
-  - host-block messaging when no valid local IP and no connected internet signaling server.
-- Single QR strategy with `syncwave://join` deep links.
-- Copy actions in live room for join link and room code.
-- `syncwave://` parser support with host/room/pin validation and loopback rejection.
-- About/Info screen with project scope, roadmap, and credits.
-- Optional backend status routes:
-  - `GET /`
-  - `GET /health`
-  - `GET /status`
-- Optional internet signaling handshake protocol events:
-  - `server.hello`
-  - `server.ready`
-  - `server.auth_required`
-  - `server.auth_failed`
-  - `server.unsupported_version`
-  - `error`
-- Server/browser integration dependency additions:
-  - `url_launcher`
-  - `phosphor_flutter`
+- Local-first Android host broadcasting foundation with live capture lifecycle.
+- LAN/WAN room code model:
+  - `LAN-XXXXX`
+  - `WAN-XXXXX`
+- QR and join architecture updates:
+  - structured app QR payload support
+  - explicit `Include PIN in QR` host toggle (default OFF)
+  - copy link defaults that keep PIN excluded unless explicitly requested
+- Host live controls:
+  - sound mute/unmute control for active broadcast
+  - microphone control marked honestly as coming soon
+- Browser listener polish for local and internet routes:
+  - clean mobile-first page
+  - status, play/pause, volume, buffer/latency hints
+  - branded footer with creator and GitHub link
+- Server root redirect configurability via `GITHUB_REDIRECT`.
+- Additional lifecycle and protocol tests for broadcast/session behavior.
 
 ### Changed
-- App version standardized at `1.0.0` for the local-first live foundation release.
-- Host create flow simplified:
-  - removed manual local/internet mode selector
-  - replaced source selection UI with two user toggles (`Audio Source`, `Microphone`)
-  - enforced at-least-one-source validation before start.
-- Host live screen upgraded from placeholder state to active broadcast runtime status.
-- Join flow updated for single-QR/deep-link architecture and improved parser coverage.
-- Settings UI simplified (clean URL input, internal normalization retained).
-- Optional server connection handling hardened for user-friendly failures and websocket lifecycle safety.
-- Optional signaling backend now supports Redis-off operation by default (in-memory fallback with status reporting).
-- Docker compose signaling service decoupled from hard Redis dependency.
+- Moved backend from `services/signaling-server/` to `server/`.
+- Updated CI and project path references to use `server/` and `apps/`.
+- Updated Docker Compose to build from `./server` and use `./server/.env.example`.
+- CI Flutter pipeline now runs:
+  - `flutter pub get`
+  - `dart run build_runner build --delete-conflicting-outputs`
+  - `flutter analyze`
+  - `flutter test`
+  - `flutter build apk --debug`
+- CI backend pipeline now runs from `server/`.
+- Broadcast lifecycle hardening:
+  - single active broadcast guard
+  - safer stop/restart cleanup
+  - session/resource cleanup consistency
+  - local/internet transport health handling
+- Audio chunk framing tuned for more stable scheduling (targeted ~40ms frames at 48kHz mono PCM16).
+- Settings status actions split into compact copy controls:
+  - Copy WebSocket URL
+  - Copy Status URL
+  - Copy Status Details
 
 ### Fixed
-- Resolved websocket lifecycle issue that could trigger `Bad state: Stream has already been listened to` during connection checks/connect flow.
-- Improved backend disconnect cleanup and typed error emission paths for room/sync/handshake flows.
+- Configuration drift between docs and runtime paths after backend relocation.
+- Root redirect endpoint now supports env override and fallback default URL.
+- Local listener websocket now enforces room PIN when room protection is enabled.
+- Start-while-active edge case now surfaces a clear user-facing error.
+- Stop flow now performs stronger cleanup of timers/subscriptions/transport resources.
+- Browser stream pages now avoid raw debug-heavy presentation and use cleaner state messaging.
 
-### Tests
+### Testing
 - Added/updated Flutter tests for:
-  - deep link parsing (`syncwave://`) and localhost rejection
-  - join URL parsing edge cases
-  - room PIN and server connection PIN validation
-  - server URL normalization + status URL derivation
-  - server handshake/auth state handling
-  - broadcast source validation guard
-  - internet availability gating
-- Backend tests cover:
-  - root/health/status routes
-  - websocket connect/handshake variants
-  - room create/join/leave lifecycle
-  - sync ping/pong
-  - invalid event schema handling
-  - disconnect cleanup broadcasts
+  - broadcast active-session guard
+  - stop/rebroadcast lifecycle behavior
+  - local listener stop-notification behavior
+  - QR PIN inclusion behavior
+  - host validation + join parser edge cases
+- Added/updated backend tests for:
+  - root redirect behavior
+  - root redirect env override behavior
+  - status/health/system route expectations
+  - websocket lifecycle and room cleanup behavior
 
-## Planned - 2.0.0
-
-- Advanced WebRTC transport optimizations
-- Adaptive bitrate and sync correction improvements
-- Enhanced microphone mixing/routing controls
-- TURN/STUN scaling and distributed relay hardening
-- Expanded desktop broadcasting support
+### Notes
+- Release remains `1.0.0`.
+- iOS remains listener-first.
+- Redis remains optional for current single-instance deployments.

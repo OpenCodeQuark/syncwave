@@ -1,5 +1,8 @@
 services:
+  # Optional local Redis for development/testing.
+  # Start with: docker compose --profile redis up
   redis:
+    profiles: ['redis']
     image: redis:7-alpine
     container_name: syncwave-redis
     ports:
@@ -9,10 +12,12 @@ services:
 
   signaling-server:
     build:
-      context: ./services/signaling-server
+      context: ./server
     container_name: syncwave-signaling
     env_file:
-      - ./services/signaling-server/.env.example
+      - ./server/.env.example
+    environment:
+      REDIS_URL: ${REDIS_URL:-}
     ports:
       - '8000:8000'
     restart: unless-stopped

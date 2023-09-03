@@ -6,9 +6,9 @@ import '../../../../core/constants/route_paths.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/permissions/permission_providers.dart';
 import '../../../../shared/widgets/primary_scaffold.dart';
+import '../../../../shared/widgets/section_card.dart';
 import '../../../settings/presentation/controllers/remote_server_connection_controller.dart';
 import '../../../settings/presentation/controllers/streaming_settings_controller.dart';
-import '../../../streaming/models/audio_source_mode.dart';
 import '../../../streaming/models/internet_mode_gate.dart';
 import '../../../streaming/models/remote_server_status.dart';
 import '../../../streaming/models/streaming_settings.dart';
@@ -26,7 +26,7 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
   final _pinController = TextEditingController();
   bool _pinEnabled = false;
   bool _audioSourceEnabled = true;
-  bool _microphoneEnabled = false;
+  final bool _microphoneEnabled = false;
   bool _isCreatingRoom = false;
 
   @override
@@ -53,64 +53,53 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
       title: 'Start Broadcast',
       child: ListView(
         children: [
-          const Text(
-            'Local streaming works over Wi-Fi or hotspot without a server.',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Connect host and listeners to the same Wi-Fi or hotspot in Local Mode.',
-          ),
-          const SizedBox(height: 8),
-          Text(
-            internetBroadcastReady
-                ? 'Internet signaling connected: internet-assisted sessions are available.'
-                : settings.internetModeConfigured
-                ? 'Internet signaling configured but not connected. Local broadcast still works.'
-                : 'Internet signaling is optional and currently disabled.',
+          SectionCard(
+            title: 'Local Broadcast',
+            subtitle:
+                'Local streaming works over Wi-Fi or hotspot without a server.',
+            child: Text(
+              internetBroadcastReady
+                  ? 'Internet signaling connected: internet-assisted sessions are available.'
+                  : settings.internetModeConfigured
+                  ? 'Internet signaling configured but not connected. Local broadcast still works.'
+                  : 'Internet signaling is optional and currently disabled.',
+            ),
           ),
           const SizedBox(height: 16),
-          Card.outlined(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 8,
-                children: [
-                  Text('Audio', style: Theme.of(context).textTheme.titleMedium),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: _audioSourceEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _audioSourceEnabled = value;
-                      });
-                    },
-                    title: const Text('Audio Source'),
-                    subtitle: const Text(
-                      'Capture system/device audio (Android host only).',
-                    ),
+          SectionCard(
+            title: 'Audio',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 8,
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _audioSourceEnabled,
+                  onChanged: (value) {
+                    setState(() {
+                      _audioSourceEnabled = value;
+                    });
+                  },
+                  title: const Text('Audio Source'),
+                  subtitle: const Text(
+                    'Capture system/device audio (Android host only).',
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: _microphoneEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _microphoneEnabled = value;
-                      });
-                    },
-                    title: const Text('Microphone'),
-                    subtitle: const Text(
-                      'Overlay microphone input (optional).',
-                    ),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _microphoneEnabled,
+                  onChanged: null,
+                  title: const Text('Microphone'),
+                  subtitle: const Text(
+                    'Microphone overlay support is coming soon.',
                   ),
-                  if (!_audioSourceEnabled && !_microphoneEnabled)
-                    const Text(
-                      'Enable Audio Source or Microphone to continue.',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                ],
-              ),
+                ),
+                if (!_audioSourceEnabled && !_microphoneEnabled)
+                  const Text(
+                    'Enable Audio Source or Microphone to continue.',
+                    style: TextStyle(color: Colors.red),
+                  ),
+              ],
             ),
           ),
           if (!internetBroadcastReady && settings.internetModeConfigured)
@@ -154,10 +143,6 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
           const Text(
             'At least one audio option must be enabled before starting broadcast.',
           ),
-          const SizedBox(height: 8),
-          Text(
-            '${AudioSourceMode.systemAudio.label} and microphone can run together on Android host.',
-          ),
           const SizedBox(height: 24),
           FilledButton(
             onPressed: _isCreatingRoom
@@ -196,9 +181,7 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                       }
 
                       final notificationAllowed =
-                          await _ensureNotificationPermissionForBroadcast(
-                            context,
-                          );
+                          await _ensureNotificationPermissionForBroadcast();
                       if (!notificationAllowed) {
                         throw AppException(
                           'Notification permission is required for foreground broadcast status.',
@@ -206,14 +189,27 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                         );
                       }
 
-                      if (_microphoneEnabled) {
-                        final microphoneGranted = await ref
-                            .read(permissionServiceProvider)
-                            .ensureMicrophonePermission();
-                        if (!microphoneGranted) {
+                      if (_audioSourceEnabled) {
+                        final shouldContinue =
+                            await _confirmSystemAudioPermissionIntro();
+                        if (!shouldContinue) {
                           throw AppException(
-                            'Microphone permission is required when Microphone is enabled.',
-                            code: 'microphone_permission_required',
+                            'System audio permission was not approved.',
+                            code: 'system_audio_permission_intro_cancelled',
+                          );
+                        }
+                      }
+
+                      final needsAudioPermission =
+                          _audioSourceEnabled || _microphoneEnabled;
+                      if (needsAudioPermission) {
+                        final audioPermissionGranted = await ref
+                            .read(permissionServiceProvider)
+                            .ensureAudioCapturePermission();
+                        if (!audioPermissionGranted) {
+                          throw AppException(
+                            'Audio capture permission is required for broadcasting.',
+                            code: 'audio_capture_permission_required',
                           );
                         }
                       }
@@ -272,16 +268,14 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
     );
   }
 
-  Future<bool> _ensureNotificationPermissionForBroadcast(
-    BuildContext context,
-  ) async {
+  Future<bool> _ensureNotificationPermissionForBroadcast() async {
     final permissionService = ref.read(permissionServiceProvider);
     final isGranted = await permissionService.isNotificationPermissionGranted();
     if (isGranted) {
       return true;
     }
 
-    if (!context.mounted) {
+    if (!mounted) {
       return false;
     }
 
@@ -312,5 +306,35 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
     }
 
     return permissionService.ensureNotificationPermission();
+  }
+
+  Future<bool> _confirmSystemAudioPermissionIntro() async {
+    if (!mounted) {
+      return false;
+    }
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('System Audio Permission'),
+          content: const Text(
+            'Android requires a screen-share style permission prompt to capture system audio. SyncWave only captures audio for your broadcast.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result == true;
   }
 }

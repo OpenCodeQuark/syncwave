@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/audio/android_audio_capture_bridge.dart';
 import '../../../core/network/signaling_web_socket_client.dart';
 import '../services/join_link_service.dart';
+import '../services/internet_audio_relay_service.dart';
 import '../services/live_audio_broadcast_service.dart';
 import '../services/local_audio_broadcast_server.dart';
 import '../services/local_network_info_service.dart';
@@ -13,11 +14,13 @@ import '../services/pin_validation_service.dart';
 import '../services/remote_signaling_client.dart';
 import '../services/remote_server_status_service.dart';
 import '../services/room_discovery_service.dart';
+import '../services/room_code_service.dart';
 import '../services/server_connection_pin_repository.dart';
 import '../services/server_connection_pin_validation_service.dart';
 import '../services/server_url_service.dart';
 import '../services/streaming_coordinator.dart';
 import '../services/streaming_settings_repository.dart';
+import '../services/wan_room_service.dart';
 
 final serverUrlServiceProvider = Provider<ServerUrlService>(
   (ref) => ServerUrlService(),
@@ -62,6 +65,10 @@ final joinLinkServiceProvider = Provider<JoinLinkService>(
   ),
 );
 
+final roomCodeServiceProvider = Provider<RoomCodeService>(
+  (ref) => RoomCodeService(),
+);
+
 final localNetworkInfoServiceProvider = Provider<LocalNetworkInfoService>(
   (ref) => LocalNetworkInfoService(),
 );
@@ -69,7 +76,12 @@ final localNetworkInfoServiceProvider = Provider<LocalNetworkInfoService>(
 final localSessionServerProvider = Provider<LocalSessionServer>((ref) {
   return LocalSessionServer(
     localNetworkInfoService: ref.watch(localNetworkInfoServiceProvider),
+    roomCodeService: ref.watch(roomCodeServiceProvider),
   );
+});
+
+final wanRoomServiceProvider = Provider<WanRoomService>((ref) {
+  return WanRoomService(serverUrlService: ref.watch(serverUrlServiceProvider));
 });
 
 final androidAudioCaptureBridgeProvider = Provider<AndroidAudioCaptureBridge>(
@@ -86,12 +98,23 @@ final localAudioBroadcastServerProvider = Provider<LocalAudioBroadcastServer>((
   return server;
 });
 
+final internetAudioRelayServiceProvider = Provider<InternetAudioRelayService>((
+  ref,
+) {
+  final service = InternetAudioRelayService();
+  ref.onDispose(() {
+    unawaited(service.dispose());
+  });
+  return service;
+});
+
 final liveAudioBroadcastServiceProvider = Provider<LiveAudioBroadcastService>((
   ref,
 ) {
   final service = LiveAudioBroadcastService(
     audioCaptureBridge: ref.watch(androidAudioCaptureBridgeProvider),
     localAudioBroadcastServer: ref.watch(localAudioBroadcastServerProvider),
+    internetAudioRelayService: ref.watch(internetAudioRelayServiceProvider),
   );
   ref.onDispose(() {
     unawaited(service.dispose());
@@ -125,5 +148,6 @@ final streamingCoordinatorProvider = Provider<StreamingCoordinator>((ref) {
   return StreamingCoordinator(
     localSessionServer: ref.watch(localSessionServerProvider),
     joinLinkService: ref.watch(joinLinkServiceProvider),
+    wanRoomService: ref.watch(wanRoomServiceProvider),
   );
 });

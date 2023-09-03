@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     pin_hash_secret: str = 'change-this-in-production'
     allowed_origins: str = '*'
     log_level: str = 'INFO'
+    github_redirect: str = 'https://github.com/rjrajujha/syncwave'
 
     model_config = SettingsConfigDict(
         env_file='.env',

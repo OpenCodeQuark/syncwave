@@ -26,7 +26,8 @@ class ServerHelloEvent {
         'appVersion': appVersion,
         'protocolVersion': protocolVersion,
         'clientPlatform': clientPlatform,
-        if (serverConnectionPin != null) 'serverConnectionPin': serverConnectionPin,
+        if (serverConnectionPin != null)
+          'serverConnectionPin': serverConnectionPin,
       },
     };
   }

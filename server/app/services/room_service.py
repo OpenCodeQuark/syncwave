@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from ..core.security import generate_room_id, hash_pin, verify_pin
+from ..core.security import generate_wan_room_id, hash_pin, is_valid_wan_room_id, verify_pin
 from ..models.peer import Peer
 from ..models.room import Room
 
@@ -27,8 +27,13 @@ class RoomService:
         host_device_name: str,
         host_platform: str,
         pin: Optional[str],
+        room_id: Optional[str] = None,
     ) -> Room:
-        room_id = self._next_room_id()
+        selected_room_id = (room_id or '').strip().upper() or self._next_room_id()
+        if not is_valid_wan_room_id(selected_room_id):
+            raise RoomError('WAN room code must match WAN-XXXXX')
+        if self._is_room_code_in_use(selected_room_id):
+            raise RoomError('Room code already in use')
         now = datetime.now(timezone.utc)
 
         host_peer = Peer(
@@ -39,7 +44,7 @@ class RoomService:
         )
 
         room = Room(
-            roomId=room_id,
+            roomId=selected_room_id,
             roomName=room_name,
             hostId=host_peer_id,
             pinProtected=bool(pin),
@@ -50,7 +55,7 @@ class RoomService:
             participants=[host_peer],
         )
 
-        self._rooms[room_id] = room
+        self._rooms[selected_room_id] = room
         return room
 
     def join_room(self, *, room_id: str, peer: Peer, pin: Optional[str]) -> Room:
@@ -81,6 +86,7 @@ class RoomService:
 
         if peer_id == room.host_id or not room.participants:
             room.status = 'closed'
+            self._rooms.pop(room_id, None)
 
         return room
 
@@ -118,6 +124,10 @@ class RoomService:
 
     def _next_room_id(self) -> str:
         while True:
-            room_id = generate_room_id()
-            if room_id not in self._rooms:
+            room_id = generate_wan_room_id()
+            if not self._is_room_code_in_use(room_id):
                 return room_id
+
+    def _is_room_code_in_use(self, room_id: str) -> bool:
+        room = self.get_room(room_id)
+        return room is not None and room.status == 'active'
