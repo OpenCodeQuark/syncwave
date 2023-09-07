@@ -23,7 +23,11 @@ class ServerUrlService {
 
     final normalizedScheme = _normalizeScheme(parsed.scheme);
     var path = parsed.path;
-    if (path.isEmpty || path == '/') {
+    if (path.isEmpty ||
+        path == '/' ||
+        path == '/status' ||
+        path == '/health' ||
+        path == '/stream/join') {
       path = '/ws';
     }
 
@@ -33,8 +37,6 @@ class ServerUrlService {
       host: parsed.host,
       port: parsed.hasPort ? parsed.port : null,
       path: path,
-      query: parsed.hasQuery ? parsed.query : null,
-      fragment: parsed.hasFragment ? parsed.fragment : null,
     );
 
     return normalized.toString();

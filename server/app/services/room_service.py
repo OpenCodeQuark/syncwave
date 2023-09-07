@@ -3,7 +3,13 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from ..core.security import generate_wan_room_id, hash_pin, is_valid_wan_room_id, verify_pin
+from ..core.security import (
+    generate_wan_room_id,
+    hash_pin,
+    is_valid_room_pin,
+    is_valid_wan_room_id,
+    verify_pin,
+)
 from ..models.peer import Peer
 from ..models.room import Room
 
@@ -34,12 +40,17 @@ class RoomService:
             raise RoomError('WAN room code must match WAN-XXXXX')
         if self._is_room_code_in_use(selected_room_id):
             raise RoomError('Room code already in use')
+        if pin is not None and not is_valid_room_pin(pin):
+            raise RoomError('Room PIN must be exactly 6 digits')
         now = datetime.now(timezone.utc)
 
+        normalized_host_platform = host_platform.strip().lower()
         host_peer = Peer(
             peerId=host_peer_id,
             deviceName=host_device_name,
-            platform=host_platform if host_platform in {'android', 'ios'} else 'unknown',
+            platform=normalized_host_platform
+            if normalized_host_platform in {'android', 'ios', 'web'}
+            else 'unknown',
             role='host',
         )
 
@@ -64,6 +75,9 @@ class RoomService:
         if room.pin_protected:
             if pin is None or room.pin_hash is None:
                 raise RoomError('PIN is required for this room')
+
+            if not is_valid_room_pin(pin):
+                raise RoomError('Room PIN must be exactly 6 digits')
 
             if not verify_pin(pin=pin, hashed_pin=room.pin_hash, secret=self._pin_hash_secret):
                 raise RoomError('Invalid PIN')

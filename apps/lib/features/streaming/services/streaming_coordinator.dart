@@ -1,4 +1,5 @@
 import '../../../core/errors/app_exception.dart';
+import '../models/broadcast_destination.dart';
 import '../models/hosted_session.dart';
 import '../models/remote_server_status.dart';
 import '../models/room_join_target.dart';
@@ -21,46 +22,79 @@ class StreamingCoordinator {
   final JoinLinkService _joinLinkService;
   final WanRoomService _wanRoomService;
 
+  Future<BroadcastAvailability> resolveBroadcastAvailability({
+    required StreamingSettings settings,
+    RemoteServerStatus? remoteServerStatus,
+  }) async {
+    final localAvailable = await _localSessionServer.hasAvailableLocalNetwork();
+    final internetAvailable =
+        settings.internetModeConfigured &&
+        remoteServerStatus != null &&
+        remoteServerStatus.internetBroadcastReady;
+
+    return BroadcastAvailability(
+      localAvailable: localAvailable,
+      internetAvailable: internetAvailable,
+    );
+  }
+
   Future<HostedSession> createHostSession({
     required String roomName,
     required bool pinProtected,
     String? pin,
     required StreamingSettings settings,
     RemoteServerStatus? remoteServerStatus,
+    BroadcastDestination destination = BroadcastDestination.automatic,
     required bool audioSourceEnabled,
     required bool microphoneEnabled,
   }) async {
-    HostedSession? localSession;
-    AppException? localFailure;
-    try {
-      localSession = await _localSessionServer.createRoom(
-        roomName: roomName,
-        pinProtected: pinProtected,
-        pin: pin,
-      );
-    } on AppException catch (error) {
-      if (error.code == 'local_room_already_active') {
-        rethrow;
-      }
-      localFailure = error;
-    }
-
     final internetReady =
         settings.internetModeConfigured &&
         remoteServerStatus != null &&
         remoteServerStatus.internetBroadcastReady;
+    final wantsLocal = destination.includesLocal;
+    final wantsInternet = destination.includesInternet && internetReady;
+    final explicitDestination = destination != BroadcastDestination.automatic;
+
+    if ((destination == BroadcastDestination.internetOnly ||
+            destination == BroadcastDestination.both) &&
+        !internetReady) {
+      throw AppException(
+        'Connect the internet signaling server before choosing this broadcast destination.',
+        code: 'internet_mode_not_connected',
+      );
+    }
+
+    HostedSession? localSession;
+    AppException? localFailure;
+    if (wantsLocal) {
+      try {
+        localSession = await _localSessionServer.createRoom(
+          roomName: roomName,
+          pinProtected: pinProtected,
+          pin: pin,
+        );
+      } on AppException catch (error) {
+        if (error.code == 'local_room_already_active' ||
+            destination == BroadcastDestination.localOnly ||
+            destination == BroadcastDestination.both) {
+          rethrow;
+        }
+        localFailure = error;
+      }
+    }
 
     String? wanRoomId;
     final serverUrl = settings.signalingServerUrl?.trim();
-    if (internetReady && serverUrl != null && serverUrl.isNotEmpty) {
+    if (wantsInternet && serverUrl != null && serverUrl.isNotEmpty) {
       try {
         wanRoomId = await _wanRoomService.createWanRoom(
           serverWebSocketUrl: serverUrl,
           roomName: roomName,
           pin: pin,
         );
-      } on AppException {
-        if (localSession == null) {
+      } on AppException catch (_) {
+        if (localSession == null || explicitDestination) {
           rethrow;
         }
       }
@@ -70,14 +104,20 @@ class StreamingCoordinator {
       return localSession.copyWith(
         audioSourceEnabled: audioSourceEnabled,
         microphoneEnabled: microphoneEnabled,
-        serverUrl: internetReady ? serverUrl : null,
+        serverUrl: wanRoomId != null ? serverUrl : null,
         wanRoomId: wanRoomId,
       );
     }
 
-    if (!internetReady) {
+    if (!wantsInternet) {
       if (localFailure != null) {
         throw localFailure;
+      }
+      if (destination == BroadcastDestination.internetOnly) {
+        throw AppException(
+          'Connect the internet signaling server before choosing Internet only.',
+          code: 'internet_mode_not_connected',
+        );
       }
       throw AppException(
         'Connect to Wi-Fi, enable hotspot, or connect an internet signaling server to start broadcasting.',

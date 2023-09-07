@@ -20,6 +20,22 @@ class LocalSessionServer {
 
   HostedSession? get activeSession => _activeSession;
 
+  Future<bool> hasAvailableLocalNetwork() async {
+    if (_activeSession != null) {
+      return false;
+    }
+
+    try {
+      await _localNetworkInfoService.selectBestLocalNetwork();
+      return true;
+    } on AppException catch (error) {
+      if (error.code == 'local_network_unavailable') {
+        return false;
+      }
+      rethrow;
+    }
+  }
+
   Future<HostedSession> createRoom({
     required String roomName,
     required bool pinProtected,

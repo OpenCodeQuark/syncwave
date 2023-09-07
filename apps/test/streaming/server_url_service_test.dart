@@ -34,6 +34,19 @@ void main() {
       );
     });
 
+    test('normalizes browser join and status URLs to websocket path', () {
+      expect(
+        service.normalize(
+          'https://your-server.example.com/stream/join?room=WAN-RM01P',
+        ),
+        equals('wss://your-server.example.com/ws'),
+      );
+      expect(
+        service.normalize('https://your-server.example.com/status'),
+        equals('wss://your-server.example.com/ws'),
+      );
+    });
+
     test('derives /status URL from websocket URL', () {
       expect(
         service.deriveStatusUrl('wss://your-server.example.com/ws'),

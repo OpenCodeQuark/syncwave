@@ -72,6 +72,9 @@ class _FakeLocalAudioBroadcastServer extends LocalAudioBroadcastServer {
 }
 
 class _FakeInternetAudioRelayService extends InternetAudioRelayService {
+  String? lastServerConnectionPin;
+  String? lastRoomId;
+
   @override
   Future<bool> connect({
     required String websocketUrl,
@@ -81,6 +84,8 @@ class _FakeInternetAudioRelayService extends InternetAudioRelayService {
     required String protocolVersion,
     String? serverConnectionPin,
   }) async {
+    lastRoomId = roomId;
+    lastServerConnectionPin = serverConnectionPin;
     return true;
   }
 
@@ -261,5 +266,49 @@ void main() {
       useMicrophone: false,
     );
     expect(service.status.phase, LiveBroadcastPhase.running);
+  });
+
+  test('passes Server Connection PIN into protected internet relay', () async {
+    final relay = _FakeInternetAudioRelayService();
+    final service = LiveAudioBroadcastService(
+      audioCaptureBridge: _FakeAudioCaptureBridge(),
+      localAudioBroadcastServer: _FakeLocalAudioBroadcastServer(),
+      internetAudioRelayService: relay,
+      isAndroidPlatform: () => true,
+    );
+
+    await service.start(
+      session: testSession().copyWith(
+        serverUrl: 'wss://your-server.example.com/ws',
+        wanRoomId: 'WAN-RM01P',
+      ),
+      useSystemAudio: true,
+      useMicrophone: false,
+      serverConnectionPin: '12345678',
+    );
+
+    expect(relay.lastRoomId, 'WAN-RM01P');
+    expect(relay.lastServerConnectionPin, '12345678');
+  });
+
+  test('active session persists until explicit stop', () async {
+    final service = LiveAudioBroadcastService(
+      audioCaptureBridge: _FakeAudioCaptureBridge(),
+      localAudioBroadcastServer: _FakeLocalAudioBroadcastServer(),
+      internetAudioRelayService: _FakeInternetAudioRelayService(),
+      isAndroidPlatform: () => true,
+    );
+
+    await service.start(
+      session: testSession(roomName: 'Persistent Room'),
+      useSystemAudio: true,
+      useMicrophone: false,
+    );
+
+    expect(service.activeSession?.roomName, 'Persistent Room');
+    expect(service.status.phase, LiveBroadcastPhase.running);
+
+    await service.stop();
+    expect(service.activeSession, isNull);
   });
 }

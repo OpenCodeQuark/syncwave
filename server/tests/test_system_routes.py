@@ -43,7 +43,7 @@ def test_status_endpoint_returns_json() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload['app'] == 'SyncWave Signaling Server'
-    assert payload['version'] == '1.0.0'
+    assert payload['version'] == '1.1.0'
     assert payload['status'] == 'ok'
     assert payload['websocketPath'] == '/ws'
     assert isinstance(payload['activeRooms'], int)
@@ -69,3 +69,13 @@ def test_stream_join_route_serves_html() -> None:
     assert 'text/html' in response.headers['content-type']
     assert 'SyncWave' in response.text
     assert 'WAN-RM01P' in response.text
+    assert 'serverPinInput' in response.text
+    assert "appVersion: '1.1.0'" in response.text
+
+
+def test_favicon_route_serves_icon() -> None:
+    with TestClient(app) as client:
+        response = client.get('/favicon.ico')
+
+    assert response.status_code == 200
+    assert response.headers['content-type'].startswith('image/x-icon')

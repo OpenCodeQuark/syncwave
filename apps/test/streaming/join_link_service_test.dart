@@ -24,12 +24,12 @@ void main() {
           roomPinProtected: true,
           pin: '123456',
         ),
-        appVersion: '1.0.0',
+        appVersion: '1.1.0',
       );
 
       final decoded = jsonDecode(payload) as Map<String, dynamic>;
       expect(decoded['app'], 'syncwave');
-      expect(decoded['appVersion'], '1.0.0');
+      expect(decoded['appVersion'], '1.1.0');
       expect(decoded['roomPinProtected'], isTrue);
       expect(decoded['pin'], isNull);
       expect(decoded['protocolVersion'], '1');
@@ -93,7 +93,7 @@ void main() {
 
       expect(
         deepLink,
-        equals('syncwave://join?host=192.168.1.20%3A9000&room=LAN-R12B9'),
+        equals('syncwave://join?host=192.168.1.20&port=9000&room=LAN-R12B9'),
       );
     });
 
@@ -114,9 +114,20 @@ void main() {
       expect(
         deepLink,
         equals(
-          'syncwave://join?host=192.168.1.20%3A9000&room=LAN-R12B9&pin=123456',
+          'syncwave://join?host=192.168.1.20&port=9000&room=LAN-R12B9&pin=123456',
         ),
       );
+    });
+
+    test('parses syncwave deep link with separate port parameter', () {
+      final target = service.parseQrPayload(
+        'syncwave://join?host=192.168.1.20&port=9000&room=LAN-R12B9',
+      );
+
+      expect(target.mode, StreamingMode.local);
+      expect(target.hostAddress, '192.168.1.20');
+      expect(target.hostPort, 9000);
+      expect(target.roomId, 'LAN-R12B9');
     });
 
     test('rejects localhost deep links', () {
@@ -150,7 +161,7 @@ void main() {
       const payload = {
         'app': 'syncwave',
         'version': 1,
-        'appVersion': '1.0.0',
+        'appVersion': '1.1.0',
         'mode': 'local',
         'roomId': 'LAN-R12B9',
         'hostAddress': '192.168.1.20',

@@ -20,6 +20,7 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
+import android.os.Process
 import android.util.Base64
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -231,7 +232,12 @@ class AudioCaptureForegroundService : Service() {
         val channelMask = AudioFormat.CHANNEL_IN_MONO
         val encoding = AudioFormat.ENCODING_PCM_16BIT
         val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelMask, encoding)
-        val bufferSize = if (minBuffer > 0) minBuffer * 2 else sampleRate
+        val frameBytes = 3840
+        val bufferSize = if (minBuffer > 0) {
+            maxOf(minBuffer * 4, frameBytes * 4)
+        } else {
+            sampleRate
+        }
 
         try {
             val record = when {
@@ -267,32 +273,37 @@ class AudioCaptureForegroundService : Service() {
             )
 
             captureThread = thread(start = true, name = "syncwave-audio-capture") {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
                 // 40ms frame at 48kHz mono PCM16: 48_000 * 0.04 * 2 = 3_840 bytes.
-                // Keeping frame duration stable improves browser-side scheduling.
-                val chunk = ByteArray(3840)
+                // Accumulating to exact frame boundaries reduces browser crackle from short reads.
+                val readBuffer = ByteArray(frameBytes)
+                val pendingFrame = ByteArray(frameBytes)
+                var pendingLength = 0
                 while (running) {
-                    val read = record.read(chunk, 0, chunk.size)
+                    val read = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        record.read(readBuffer, 0, readBuffer.size, AudioRecord.READ_BLOCKING)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        record.read(readBuffer, 0, readBuffer.size)
+                    }
                     if (read > 0) {
-                        val raw = chunk.copyOf(read)
-                        val encoded = Base64.encodeToString(raw, Base64.NO_WRAP)
-                        val sampleCount = read / 2
-                        val durationMs = ((sampleCount.toDouble() / sampleRate.toDouble()) * 1000.0).toLong()
-                        val captureTimestamp = System.currentTimeMillis()
-                        AudioCaptureEventBus.emit(
-                            mapOf(
-                                "type" to "audio_chunk",
-                                "data" to encoded,
-                                "format" to "pcm16",
-                                "sampleRate" to sampleRate,
-                                "channelCount" to 1,
-                                "durationMs" to durationMs,
-                                "sequence" to sequenceNumber,
-                                "captureTimestamp" to captureTimestamp,
-                                "hostTimestamp" to captureTimestamp,
-                                "streamStartedAt" to streamStartedAtMs,
-                            ),
-                        )
-                        sequenceNumber += 1
+                        var offset = 0
+                        while (offset < read) {
+                            val toCopy = minOf(frameBytes - pendingLength, read - offset)
+                            System.arraycopy(readBuffer, offset, pendingFrame, pendingLength, toCopy)
+                            pendingLength += toCopy
+                            offset += toCopy
+
+                            if (pendingLength == frameBytes) {
+                                emitAudioFrame(
+                                    raw = pendingFrame.copyOf(frameBytes),
+                                    sampleRate = sampleRate,
+                                )
+                                pendingLength = 0
+                            }
+                        }
+                    } else if (read == AudioRecord.ERROR_INVALID_OPERATION || read == AudioRecord.ERROR_BAD_VALUE) {
+                        throw IllegalStateException("AudioRecord read failed: $read")
                     }
                 }
             }
@@ -349,6 +360,28 @@ class AudioCaptureForegroundService : Service() {
             .setBufferSizeInBytes(bufferSize)
             .setAudioPlaybackCaptureConfig(config)
             .build()
+    }
+
+    private fun emitAudioFrame(raw: ByteArray, sampleRate: Int) {
+        val encoded = Base64.encodeToString(raw, Base64.NO_WRAP)
+        val sampleCount = raw.size / 2
+        val durationMs = ((sampleCount.toDouble() / sampleRate.toDouble()) * 1000.0).toLong()
+        val captureTimestamp = System.currentTimeMillis()
+        AudioCaptureEventBus.emit(
+            mapOf(
+                "type" to "audio_chunk",
+                "data" to encoded,
+                "format" to "pcm16",
+                "sampleRate" to sampleRate,
+                "channelCount" to 1,
+                "durationMs" to durationMs,
+                "sequence" to sequenceNumber,
+                "captureTimestamp" to captureTimestamp,
+                "hostTimestamp" to captureTimestamp,
+                "streamStartedAt" to streamStartedAtMs,
+            ),
+        )
+        sequenceNumber += 1
     }
 
     private fun buildMicrophoneAudioRecord(

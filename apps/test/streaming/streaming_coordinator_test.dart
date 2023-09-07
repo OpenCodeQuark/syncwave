@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:syncwave/core/errors/app_exception.dart';
+import 'package:syncwave/features/streaming/models/broadcast_destination.dart';
 import 'package:syncwave/features/streaming/models/hosted_session.dart';
 import 'package:syncwave/features/streaming/models/remote_server_connection_state.dart';
 import 'package:syncwave/features/streaming/models/remote_server_status.dart';
@@ -23,6 +24,10 @@ class _FakeLocalSessionServer extends LocalSessionServer {
 
   HostedSession? nextSession;
   AppException? nextError;
+  bool localAvailable = true;
+
+  @override
+  Future<bool> hasAvailableLocalNetwork() async => localAvailable;
 
   @override
   Future<HostedSession> createRoom({
@@ -125,6 +130,7 @@ void main() {
         signalingServerUrl: 'wss://your-server.example.com/ws',
       ),
       remoteServerStatus: remoteReady,
+      destination: BroadcastDestination.automatic,
       audioSourceEnabled: true,
       microphoneEnabled: false,
     );
@@ -160,6 +166,7 @@ void main() {
         signalingServerUrl: 'wss://your-server.example.com/ws',
       ),
       remoteServerStatus: remoteReady,
+      destination: BroadcastDestination.both,
       audioSourceEnabled: true,
       microphoneEnabled: false,
     );
@@ -168,5 +175,100 @@ void main() {
     expect(session.roomId, 'LAN-R12B9');
     expect(session.wanRoomId, 'WAN-RM01P');
     expect(session.serverUrl, 'wss://your-server.example.com/ws');
+  });
+
+  test(
+    'resolves route selection when LAN and WAN are both available',
+    () async {
+      final localServer = _FakeLocalSessionServer()..localAvailable = true;
+      final coordinator = StreamingCoordinator(
+        localSessionServer: localServer,
+        joinLinkService: JoinLinkService(
+          pinValidationService: PinValidationService(),
+        ),
+        wanRoomService: _FakeWanRoomService(),
+      );
+
+      final availability = await coordinator.resolveBroadcastAvailability(
+        settings: const StreamingSettings(
+          internetStreamingEnabled: true,
+          signalingServerUrl: 'wss://your-server.example.com/ws',
+        ),
+        remoteServerStatus: remoteReady,
+      );
+
+      expect(availability.localAvailable, isTrue);
+      expect(availability.internetAvailable, isTrue);
+      expect(availability.bothAvailable, isTrue);
+      expect(availability.defaultDestination, isNull);
+    },
+  );
+
+  test('internet-only destination skips local room creation', () async {
+    final localServer = _FakeLocalSessionServer()
+      ..localAvailable = true
+      ..nextError = AppException('should not create LAN', code: 'unexpected');
+    final wanService = _FakeWanRoomService()..nextRoomId = 'WAN-RM01P';
+    final coordinator = StreamingCoordinator(
+      localSessionServer: localServer,
+      joinLinkService: JoinLinkService(
+        pinValidationService: PinValidationService(),
+      ),
+      wanRoomService: wanService,
+    );
+
+    final session = await coordinator.createHostSession(
+      roomName: 'Room',
+      pinProtected: false,
+      settings: const StreamingSettings(
+        internetStreamingEnabled: true,
+        signalingServerUrl: 'wss://your-server.example.com/ws',
+      ),
+      remoteServerStatus: remoteReady,
+      destination: BroadcastDestination.internetOnly,
+      audioSourceEnabled: true,
+      microphoneEnabled: false,
+    );
+
+    expect(session.mode, StreamingMode.internet);
+    expect(session.roomId, 'WAN-RM01P');
+    expect(session.hostAddress, isNull);
+  });
+
+  test('local-only destination skips WAN room creation', () async {
+    final localServer = _FakeLocalSessionServer()
+      ..nextSession = const HostedSession(
+        roomId: 'LAN-R12B9',
+        roomName: 'Room',
+        mode: StreamingMode.local,
+        hostAddress: '192.168.1.20',
+        hostPort: 9000,
+      );
+    final wanService = _FakeWanRoomService()
+      ..nextError = AppException('should not create WAN', code: 'unexpected');
+    final coordinator = StreamingCoordinator(
+      localSessionServer: localServer,
+      joinLinkService: JoinLinkService(
+        pinValidationService: PinValidationService(),
+      ),
+      wanRoomService: wanService,
+    );
+
+    final session = await coordinator.createHostSession(
+      roomName: 'Room',
+      pinProtected: false,
+      settings: const StreamingSettings(
+        internetStreamingEnabled: true,
+        signalingServerUrl: 'wss://your-server.example.com/ws',
+      ),
+      remoteServerStatus: remoteReady,
+      destination: BroadcastDestination.localOnly,
+      audioSourceEnabled: true,
+      microphoneEnabled: false,
+    );
+
+    expect(session.mode, StreamingMode.local);
+    expect(session.wanRoomId, isNull);
+    expect(session.serverUrl, isNull);
   });
 }

@@ -202,7 +202,7 @@ class SignalingService:
                     'roomId': event.room_id,
                     'serverTimestamp': self._sync_service.server_timestamp_ms(),
                     'streamStartedAt': event.payload.get('streamStartedAt'),
-                    'targetBufferMs': event.payload.get('targetBufferMs', 220),
+                    'targetBufferMs': event.payload.get('targetBufferMs', 260),
                 },
             ),
             [
@@ -213,7 +213,7 @@ class SignalingService:
                     payload={
                         'roomId': event.room_id,
                         'streamStartedAt': event.payload.get('streamStartedAt'),
-                        'targetBufferMs': event.payload.get('targetBufferMs', 220),
+                        'targetBufferMs': event.payload.get('targetBufferMs', 260),
                         'serverTime': self._sync_service.server_timestamp_ms(),
                     },
                 )

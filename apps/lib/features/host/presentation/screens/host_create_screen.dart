@@ -10,6 +10,7 @@ import '../../../../shared/widgets/section_card.dart';
 import '../../../settings/presentation/controllers/remote_server_connection_controller.dart';
 import '../../../settings/presentation/controllers/streaming_settings_controller.dart';
 import '../../../streaming/models/internet_mode_gate.dart';
+import '../../../streaming/models/broadcast_destination.dart';
 import '../../../streaming/models/remote_server_status.dart';
 import '../../../streaming/models/streaming_settings.dart';
 import '../../../streaming/providers/streaming_providers.dart';
@@ -180,6 +181,21 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                         }
                       }
 
+                      final coordinator = ref.read(
+                        streamingCoordinatorProvider,
+                      );
+                      final availability = await coordinator
+                          .resolveBroadcastAvailability(
+                            settings: settings,
+                            remoteServerStatus: remoteStatus,
+                          );
+                      final destination = await _selectBroadcastDestination(
+                        availability,
+                      );
+                      if (destination == null) {
+                        return;
+                      }
+
                       final notificationAllowed =
                           await _ensureNotificationPermissionForBroadcast();
                       if (!notificationAllowed) {
@@ -214,9 +230,6 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                         }
                       }
 
-                      final coordinator = ref.read(
-                        streamingCoordinatorProvider,
-                      );
                       final hostedSession = await coordinator.createHostSession(
                         roomName: _roomNameController.text.trim().isEmpty
                             ? 'SyncWave Room'
@@ -225,6 +238,7 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                         pin: pin,
                         settings: settings,
                         remoteServerStatus: remoteStatus,
+                        destination: destination,
                         audioSourceEnabled: _audioSourceEnabled,
                         microphoneEnabled: _microphoneEnabled,
                       );
@@ -308,6 +322,77 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
     return permissionService.ensureNotificationPermission();
   }
 
+  Future<BroadcastDestination?> _selectBroadcastDestination(
+    BroadcastAvailability availability,
+  ) async {
+    if (!availability.hasAny) {
+      throw AppException(
+        'Connect to Wi-Fi, enable hotspot, or connect an internet signaling server to start broadcasting.',
+        code: 'broadcast_unavailable',
+      );
+    }
+
+    final defaultDestination = availability.defaultDestination;
+    if (defaultDestination != null) {
+      return defaultDestination;
+    }
+
+    if (!mounted) {
+      return null;
+    }
+
+    return showModalBottomSheet<BroadcastDestination>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Broadcast Destination',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'LAN and internet are both available. Choose where this room should broadcast.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _DestinationTile(
+                  destination: BroadcastDestination.localOnly,
+                  icon: Icons.wifi_rounded,
+                  onTap: () =>
+                      Navigator.of(context).pop(BroadcastDestination.localOnly),
+                ),
+                _DestinationTile(
+                  destination: BroadcastDestination.internetOnly,
+                  icon: Icons.public_rounded,
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(BroadcastDestination.internetOnly),
+                ),
+                _DestinationTile(
+                  destination: BroadcastDestination.both,
+                  icon: Icons.hub_rounded,
+                  onTap: () =>
+                      Navigator.of(context).pop(BroadcastDestination.both),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<bool> _confirmSystemAudioPermissionIntro() async {
     if (!mounted) {
       return false;
@@ -336,5 +421,29 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
     );
 
     return result == true;
+  }
+}
+
+class _DestinationTile extends StatelessWidget {
+  const _DestinationTile({
+    required this.destination,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final BroadcastDestination destination;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon),
+      title: Text(destination.title),
+      subtitle: Text(destination.subtitle),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      onTap: onTap,
+    );
   }
 }

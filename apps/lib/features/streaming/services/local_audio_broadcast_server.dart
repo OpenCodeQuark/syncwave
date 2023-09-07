@@ -61,7 +61,7 @@ class LocalAudioBroadcastServer {
   int _sampleRate = 48000;
   int _channelCount = 1;
   String _format = 'pcm16';
-  final int _targetBufferMs = 220;
+  final int _targetBufferMs = 260;
   int _syncTick = 0;
 
   bool get isRunning => _server != null;
@@ -599,8 +599,8 @@ class LocalAudioBroadcastServer {
 
     let started = false;
     let nextPlayTime = 0;
-    let targetBufferMs = 220;
-    let maxBufferMs = 480;
+    let targetBufferMs = 260;
+    let maxBufferMs = 650;
     let queue = [];
     let queuedMs = 0;
     let lastSequence = null;
@@ -659,6 +659,12 @@ class LocalAudioBroadcastServer {
       }
       if (lastSequence !== null && seq > lastSequence + 1) {
         setError('Minor network jitter detected. Rebuffering smoothly...');
+        started = false;
+        if (audioCtx) {
+          nextPlayTime = Math.max(audioCtx.currentTime + 0.08, nextPlayTime);
+        }
+      } else if (errorText.textContent.startsWith('Minor network jitter')) {
+        setError('');
       }
       lastSequence = seq;
 
@@ -827,7 +833,7 @@ class LocalAudioBroadcastServer {
 
         switch (decoded.type) {
           case 'stream.meta':
-            targetBufferMs = Number(decoded.targetBufferMs || 220);
+            targetBufferMs = Number(decoded.targetBufferMs || 260);
             updateBufferLabel();
             break;
           case 'stream.audio':

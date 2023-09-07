@@ -35,7 +35,7 @@ class OnboardingScreen extends StatelessWidget {
                         'Local streaming works over Wi-Fi or hotspot without any external server.',
                       ),
                       Text(
-                        'Android hosts broadcasts. iOS is listener-first in v1.0.0.',
+                        'Android hosts broadcasts. iOS is listener-first in v1.1.0.',
                       ),
                       Text(
                         'Optional internet signaling can be configured in Settings when needed.',

@@ -85,6 +85,8 @@ class _JoinManualScreenState extends ConsumerState<JoinManualScreen> {
                     .read(pinValidationServiceProvider)
                     .normalizeAndValidateOptional(_pinController.text);
                 final effectivePin = enteredPin ?? parsedTarget.pin;
+                final effectiveServerUrl =
+                    parsedTarget.serverUrl ?? settings.signalingServerUrl;
 
                 if (parsedTarget.roomPinProtected && effectivePin == null) {
                   throw AppException(
@@ -94,16 +96,22 @@ class _JoinManualScreenState extends ConsumerState<JoinManualScreen> {
                 }
 
                 if (parsedTarget.mode == StreamingMode.internet) {
-                  final internetReady = internetJoinReady;
+                  final internetReady =
+                      internetJoinReady || effectiveServerUrl != null;
                   if (!internetReady) {
                     throw AppException(
-                      'Internet mode requires server connection and successful handshake. Open Settings and connect first.',
+                      'Internet join needs a server URL. Paste a full /stream/join link or connect a server in Settings.',
                       code: 'internet_mode_not_connected',
                     );
                   }
                 }
 
-                final target = parsedTarget.copyWith(pin: effectivePin);
+                final target = parsedTarget.copyWith(
+                  pin: effectivePin,
+                  serverUrl: parsedTarget.mode == StreamingMode.internet
+                      ? effectiveServerUrl
+                      : parsedTarget.serverUrl,
+                );
 
                 final endpointSummary = target.mode == StreamingMode.local
                     ? 'Joining local room ${target.roomId} at ${target.hostAddress ?? 'host from QR'}'

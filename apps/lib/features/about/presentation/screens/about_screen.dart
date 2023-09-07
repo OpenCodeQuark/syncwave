@@ -31,11 +31,11 @@ class AboutScreen extends StatelessWidget {
                   'Local-first live audio broadcasting for nearby listeners.',
                 ),
                 Text(
-                  'v1.0.0 supports Android host broadcasting and listener joins using QR, deep links, and browser listener routes.',
+                  'v1.1.0 supports explicit LAN/internet broadcast choice, active room return, and browser listener routes.',
                 ),
                 Text('Internet signaling is optional and disabled by default.'),
                 Text(
-                  'Android is broadcaster-first. iOS is listener-first in v1.0.0.',
+                  'Android is broadcaster-first. iOS is listener-first in v1.1.0.',
                 ),
               ],
             ),

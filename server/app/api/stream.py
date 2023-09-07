@@ -1,9 +1,16 @@
 from html import escape
+from pathlib import Path
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 router = APIRouter(tags=['stream'])
+STATIC_DIR = Path(__file__).resolve().parents[1] / 'static'
+
+
+@router.get('/favicon.ico', include_in_schema=False)
+def favicon() -> FileResponse:
+    return FileResponse(STATIC_DIR / 'favicon.ico', media_type='image/x-icon')
 
 
 @router.get('/stream/join', response_class=HTMLResponse)
@@ -17,6 +24,7 @@ def browser_stream_join(request: Request) -> HTMLResponse:
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>SyncWave Listener</title>
+  <link rel="icon" href="/favicon.ico" />
   <style>
     :root {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
     body {{
@@ -77,7 +85,12 @@ def browser_stream_join(request: Request) -> HTMLResponse:
     <div class="grid">
       <div>
         <label for="roomInput">Room code</label>
-        <input id="roomInput" type="text" placeholder="LAN-ABCDE or WAN-ABCDE" value="{escape(room)}" />
+        <input
+          id="roomInput"
+          type="text"
+          placeholder="LAN-ABCDE or WAN-ABCDE"
+          value="{escape(room)}"
+        />
       </div>
       <div>
         <label for="pinInput">Room PIN (if required)</label>
@@ -88,6 +101,16 @@ def browser_stream_join(request: Request) -> HTMLResponse:
           maxlength="6"
           placeholder="6 digits"
           value="{escape(pin)}"
+        />
+      </div>
+      <div>
+        <label for="serverPinInput">Server Connection PIN (if required)</label>
+        <input
+          id="serverPinInput"
+          type="password"
+          inputmode="numeric"
+          maxlength="10"
+          placeholder="8 to 10 digits"
         />
       </div>
       <div class="row">
@@ -104,14 +127,23 @@ def browser_stream_join(request: Request) -> HTMLResponse:
       <div id="errorText" class="error" role="alert"></div>
     </div>
     <div class="footer">
-      <div>Made with <span class="heart">♥</span> by <a href="https://rjrajujha.github.io" target="_blank" rel="noreferrer">R. Jha</a></div>
-      <a href="https://github.com/rjrajujha/syncwave" target="_blank" rel="noreferrer" aria-label="GitHub">🐙</a>
+      <div>
+        Made with <span class="heart">♥</span> by
+        <a href="https://rjrajujha.github.io" target="_blank" rel="noreferrer">R. Jha</a>
+      </div>
+      <a
+        href="https://github.com/rjrajujha/syncwave"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="GitHub"
+      >🐙</a>
     </div>
   </div>
 
   <script>
     const roomInput = document.getElementById('roomInput');
     const pinInput = document.getElementById('pinInput');
+    const serverPinInput = document.getElementById('serverPinInput');
     const connectBtn = document.getElementById('connectBtn');
     const toggleBtn = document.getElementById('toggleBtn');
     const volumeSlider = document.getElementById('volumeSlider');
@@ -133,8 +165,8 @@ def browser_stream_join(request: Request) -> HTMLResponse:
     let queuedMs = 0;
     let started = false;
     let nextPlayTime = 0;
-    let targetBufferMs = 220;
-    let maxBufferMs = 500;
+    let targetBufferMs = 260;
+    let maxBufferMs = 650;
     let lastSeq = null;
     let readyForRoomJoin = false;
 
@@ -195,6 +227,12 @@ def browser_stream_join(request: Request) -> HTMLResponse:
       }}
       if (lastSeq !== null && seq > lastSeq + 1) {{
         setError('Network jitter detected. Rebuffering...');
+        started = false;
+        if (audioCtx) {{
+          nextPlayTime = Math.max(audioCtx.currentTime + 0.08, nextPlayTime);
+        }}
+      }} else if (errorText.textContent.startsWith('Network jitter')) {{
+        setError('');
       }}
       lastSeq = seq;
 
@@ -286,6 +324,7 @@ def browser_stream_join(request: Request) -> HTMLResponse:
       }}
       const roomCode = roomInput.value.trim().toUpperCase();
       const pin = pinInput.value.trim();
+      const serverPin = serverPinInput.value.trim();
       ws.send(JSON.stringify({{
         type: 'room.join',
         roomId: roomCode,
@@ -320,6 +359,7 @@ def browser_stream_join(request: Request) -> HTMLResponse:
     function connect() {{
       const roomCode = roomInput.value.trim().toUpperCase();
       const pin = pinInput.value.trim();
+      const serverPin = serverPinInput.value.trim();
       if (!roomCode) {{
         setError('Enter room code to continue.');
         return;
@@ -330,6 +370,10 @@ def browser_stream_join(request: Request) -> HTMLResponse:
       }}
       if (pin && !/^\\d{{6}}$/.test(pin)) {{
         setError('PIN must be exactly 6 digits.');
+        return;
+      }}
+      if (serverPin && !/^\\d{{8,10}}$/.test(serverPin)) {{
+        setError('Server Connection PIN must be 8 to 10 digits.');
         return;
       }}
 
@@ -378,9 +422,10 @@ def browser_stream_join(request: Request) -> HTMLResponse:
               type: 'server.hello',
               payload: {{
                 appName: 'SyncWave Browser Listener',
-                appVersion: '1.0.0',
+                appVersion: '1.1.0',
                 protocolVersion: '1',
                 clientPlatform: 'web',
+                ...(serverPin ? {{ serverConnectionPin: serverPin }} : {{}}),
               }},
             }}));
             break;
@@ -394,13 +439,16 @@ def browser_stream_join(request: Request) -> HTMLResponse:
             setStatus('Buffering', 'buffering');
             break;
           case 'room.join_failed':
+          case 'server.auth_required':
+          case 'server.auth_failed':
+          case 'server.unsupported_version':
           case 'error':
             setStatus('Error', 'error');
             setError(decoded.payload?.message || 'Unable to join room.');
             break;
           case 'stream.meta':
             targetBufferMs = Number(
-              decoded.payload?.targetBufferMs || decoded.targetBufferMs || 220
+              decoded.payload?.targetBufferMs || decoded.targetBufferMs || 260
             );
             updateBufferLabel();
             break;

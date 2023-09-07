@@ -31,6 +31,13 @@ void main() {
       expect(target.serverUrl, isNotNull);
     });
 
+    test('parses bare WAN room code as internet target', () {
+      final target = service.parseManualJoinInput('WAN-RM01P');
+
+      expect(target.mode, StreamingMode.internet);
+      expect(target.roomId, 'WAN-RM01P');
+    });
+
     test('parses join URL with roomId query parameter', () {
       final target = service.parseManualJoinInput(
         'https://your-server.example.com/stream/join?roomId=WAN-RM01P',
@@ -61,6 +68,17 @@ void main() {
     test('parses syncwave deep link with host and room', () {
       final target = service.parseManualJoinInput(
         'syncwave://join?host=192.168.1.20:9000&room=LAN-R12B9',
+      );
+
+      expect(target.mode, StreamingMode.local);
+      expect(target.roomId, 'LAN-R12B9');
+      expect(target.hostAddress, '192.168.1.20');
+      expect(target.hostPort, 9000);
+    });
+
+    test('parses syncwave deep link with separate port parameter', () {
+      final target = service.parseManualJoinInput(
+        'syncwave://join?host=192.168.1.20&port=9000&room=LAN-R12B9',
       );
 
       expect(target.mode, StreamingMode.local);

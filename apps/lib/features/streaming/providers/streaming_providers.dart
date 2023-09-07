@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/audio/android_audio_capture_bridge.dart';
 import '../../../core/network/signaling_web_socket_client.dart';
+import '../models/live_broadcast_status.dart';
 import '../services/join_link_service.dart';
 import '../services/internet_audio_relay_service.dart';
 import '../services/live_audio_broadcast_service.dart';
@@ -120,6 +121,14 @@ final liveAudioBroadcastServiceProvider = Provider<LiveAudioBroadcastService>((
     unawaited(service.dispose());
   });
   return service;
+});
+
+final liveBroadcastStatusProvider = StreamProvider<LiveBroadcastStatus>((ref) {
+  final service = ref.watch(liveAudioBroadcastServiceProvider);
+  return (() async* {
+    yield service.status;
+    yield* service.statusStream;
+  })();
 });
 
 final remoteSignalingWebSocketClientProvider =

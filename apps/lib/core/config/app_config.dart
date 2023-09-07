@@ -13,7 +13,7 @@ class AppConfig {
   factory AppConfig.fromEnvironment() {
     return const AppConfig(
       appName: 'SyncWave',
-      appVersion: String.fromEnvironment('APP_VERSION', defaultValue: '1.0.0'),
+      appVersion: String.fromEnvironment('APP_VERSION', defaultValue: '1.1.0'),
       protocolVersion: String.fromEnvironment(
         'APP_PROTOCOL_VERSION',
         defaultValue: '1',

@@ -9,7 +9,7 @@ class Peer(BaseModel):
 
     peer_id: str = Field(alias='peerId')
     device_name: str = Field(alias='deviceName')
-    platform: Literal['android', 'ios', 'unknown']
+    platform: Literal['android', 'ios', 'web', 'unknown']
     role: Literal['host', 'listener']
     joined_at: datetime = Field(
         default_factory=lambda: datetime.now(tz=timezone.utc),

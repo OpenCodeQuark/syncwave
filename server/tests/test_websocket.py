@@ -37,7 +37,7 @@ def make_client(env: Optional[dict[str, str]] = None) -> Iterator[TestClient]:
 def send_hello(websocket, *, protocol_version: str = '1', pin: Optional[str] = None) -> dict:
     payload = {
         'appName': 'SyncWave App',
-        'appVersion': '1.0.0',
+        'appVersion': '1.1.0',
         'protocolVersion': protocol_version,
         'clientPlatform': 'android',
     }
@@ -80,7 +80,7 @@ def test_websocket_connect_and_server_hello_success() -> None:
             hello_response = send_hello(websocket)
 
     assert hello_response['type'] == 'server.ready'
-    assert hello_response['payload']['serverVersion'] == '1.0.0'
+    assert hello_response['payload']['serverVersion'] == '1.1.0'
 
 
 def test_server_hello_requires_auth_when_enabled() -> None:
@@ -167,6 +167,37 @@ def test_room_create_join_leave_and_sync_success() -> None:
                 )
                 left = listener.receive_json()
                 assert left['type'] == 'room.left'
+
+
+def test_web_listener_platform_can_join_wan_room() -> None:
+    with make_client() as client:
+        with client.websocket_connect('/ws?peerId=host_web_listener') as host:
+            host.receive_json()
+            assert send_hello(host)['type'] == 'server.ready'
+            room_id = create_room(host)
+
+            with client.websocket_connect('/ws?peerId=browser_listener') as listener:
+                listener.receive_json()
+                assert send_hello(listener)['type'] == 'server.ready'
+                listener.send_json(
+                    {
+                        'type': 'room.join',
+                        'requestId': 'join-web-1',
+                        'roomId': room_id,
+                        'payload': {
+                            'deviceName': 'Web Listener',
+                            'platform': 'web',
+                        },
+                    }
+                )
+                joined = listener.receive_json()
+
+    assert joined['type'] == 'room.joined'
+    participants = joined['payload']['room']['participants']
+    web_participant = next(
+        participant for participant in participants if participant['peerId'] == 'browser_listener'
+    )
+    assert web_participant['platform'] == 'web'
 
 
 def test_invalid_event_returns_typed_error() -> None:

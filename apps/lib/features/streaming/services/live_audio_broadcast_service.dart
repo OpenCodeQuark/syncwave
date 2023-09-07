@@ -50,6 +50,7 @@ class LiveAudioBroadcastService {
 
   Stream<LiveBroadcastStatus> get statusStream => _statusController.stream;
   LiveBroadcastStatus get status => _status;
+  HostedSession? get activeSession => _activeSession;
   bool get isBroadcastActive =>
       _status.phase == LiveBroadcastPhase.starting ||
       _status.phase == LiveBroadcastPhase.running ||
@@ -59,6 +60,7 @@ class LiveAudioBroadcastService {
     required HostedSession session,
     required bool useSystemAudio,
     required bool useMicrophone,
+    String? serverConnectionPin,
   }) async {
     if (isBroadcastActive || _activeSession != null) {
       throw AppException(
@@ -75,7 +77,7 @@ class LiveAudioBroadcastService {
 
     if (!_isAndroidPlatform()) {
       throw AppException(
-        'Broadcast hosting is currently supported on Android only. iOS is listener-first in v1.0.0.',
+        'Broadcast hosting is currently supported on Android only. iOS is listener-first in v1.1.0.',
         code: 'host_unsupported_platform',
       );
     }
@@ -177,6 +179,7 @@ class LiveAudioBroadcastService {
           appName: config.appName,
           appVersion: config.appVersion,
           protocolVersion: config.protocolVersion,
+          serverConnectionPin: serverConnectionPin,
         );
         if (!connected && session.mode == StreamingMode.internet) {
           throw AppException(
@@ -279,8 +282,10 @@ class LiveAudioBroadcastService {
         _status.copyWith(
           phase: LiveBroadcastPhase.running,
           message: shouldStartLocalServer
-              ? 'Broadcast is live on local network.'
-              : 'Broadcast capture is live with internet signaling session.',
+              ? (_internetTransportActive
+                    ? 'Broadcast is live on LAN and internet.'
+                    : 'Broadcast is live on local network.')
+              : 'Broadcast is live through internet signaling.',
           joinUrl: joinUri,
           listenerCount: _localAudioBroadcastServer.listenerCount,
           systemAudioMuted: _systemAudioMuted,

@@ -1,5 +1,3 @@
-# Documentation (internal AI planning/reference only)
-docs/
 
 # Flutter / Dart
 .dart_tool/
@@ -55,7 +53,13 @@ build/
 # Environment and secrets
 .env
 .env.*
+!.env.example
+!**/.env.example
 *.local
+
+# Misc
+docs/
+AppIcons/
 
 # Coverage and test artifacts
 coverage/

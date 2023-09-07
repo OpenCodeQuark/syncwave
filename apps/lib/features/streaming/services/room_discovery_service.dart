@@ -60,7 +60,12 @@ class RoomDiscoveryService {
 
     final normalizedCode = trimmedInput.toUpperCase();
     if (_roomCodePattern.hasMatch(normalizedCode)) {
-      return RoomJoinTarget(mode: StreamingMode.local, roomId: normalizedCode);
+      return RoomJoinTarget(
+        mode: normalizedCode.startsWith('WAN-')
+            ? StreamingMode.internet
+            : StreamingMode.local,
+        roomId: normalizedCode,
+      );
     }
 
     throw const FormatException(
@@ -132,9 +137,7 @@ class RoomDiscoveryService {
 
       final hostParts = hostParameter.split(':');
       final host = hostParts.first.trim();
-      final port = hostParts.length > 1
-          ? int.tryParse(hostParts.last.trim())
-          : null;
+      final port = _parseSyncWavePort(uri, hostParts);
       if (host.isEmpty ||
           host.toLowerCase() == 'localhost' ||
           host == '127.0.0.1' ||
@@ -241,5 +244,26 @@ class RoomDiscoveryService {
         .map((e) => e.toLowerCase())
         .toList();
     return lastTwo[0] == 'stream' && lastTwo[1] == 'join';
+  }
+
+  int? _parseSyncWavePort(Uri uri, List<String> hostParts) {
+    final explicitPort = uri.queryParameters['port']?.trim();
+    if (explicitPort != null && explicitPort.isNotEmpty) {
+      final parsed = int.tryParse(explicitPort);
+      if (parsed == null || parsed <= 0 || parsed > 65535) {
+        throw const FormatException('syncwave:// port is invalid.');
+      }
+      return parsed;
+    }
+
+    if (hostParts.length <= 1) {
+      return null;
+    }
+
+    final parsed = int.tryParse(hostParts.last.trim());
+    if (parsed == null || parsed <= 0 || parsed > 65535) {
+      throw const FormatException('syncwave:// port is invalid.');
+    }
+    return parsed;
   }
 }

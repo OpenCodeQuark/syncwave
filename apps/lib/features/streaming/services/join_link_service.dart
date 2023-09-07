@@ -99,14 +99,12 @@ class JoinLinkService {
         );
       }
 
-      final hostWithPort = target.hostPort == null
-          ? host
-          : '$host:${target.hostPort}';
       return Uri(
         scheme: 'syncwave',
         host: 'join',
         queryParameters: {
-          'host': hostWithPort,
+          'host': host,
+          if (target.hostPort != null) 'port': target.hostPort.toString(),
           'room': target.roomId,
           if (includeRoomPin && target.pin != null) 'pin': target.pin,
         },
@@ -114,14 +112,12 @@ class JoinLinkService {
     }
 
     final serverUri = _resolveInternetBaseUri(target.serverUrl);
-    final serverHost = serverUri.hasPort
-        ? '${serverUri.host}:${serverUri.port}'
-        : serverUri.host;
     return Uri(
       scheme: 'syncwave',
       host: 'join',
       queryParameters: {
-        'host': serverHost,
+        'host': serverUri.host,
+        if (serverUri.hasPort) 'port': serverUri.port.toString(),
         'room': target.roomId,
         if (includeRoomPin && target.pin != null) 'pin': target.pin,
       },
@@ -300,7 +296,7 @@ class JoinLinkService {
 
       final split = hostParameter.split(':');
       final host = split.first.trim();
-      final port = split.length > 1 ? int.tryParse(split.last.trim()) : null;
+      final port = _parseSyncWavePort(uri, split);
       if (host.isEmpty ||
           host == 'localhost' ||
           host == '127.0.0.1' ||
@@ -419,6 +415,27 @@ class JoinLinkService {
     }
 
     return false;
+  }
+
+  int? _parseSyncWavePort(Uri uri, List<String> hostParts) {
+    final explicitPort = uri.queryParameters['port']?.trim();
+    if (explicitPort != null && explicitPort.isNotEmpty) {
+      final parsed = int.tryParse(explicitPort);
+      if (parsed == null || parsed <= 0 || parsed > 65535) {
+        throw const FormatException('syncwave:// port is invalid.');
+      }
+      return parsed;
+    }
+
+    if (hostParts.length <= 1) {
+      return null;
+    }
+
+    final parsed = int.tryParse(hostParts.last.trim());
+    if (parsed == null || parsed <= 0 || parsed > 65535) {
+      throw const FormatException('syncwave:// port is invalid.');
+    }
+    return parsed;
   }
 
   bool _isRejectedLocalHost(String host) {

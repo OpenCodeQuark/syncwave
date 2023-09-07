@@ -31,8 +31,7 @@ class HostLiveRoomScreen extends ConsumerStatefulWidget {
   ConsumerState<HostLiveRoomScreen> createState() => _HostLiveRoomScreenState();
 }
 
-class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen>
-    with WidgetsBindingObserver {
+class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen> {
   StreamSubscription<LiveBroadcastStatus>? _statusSubscription;
   LiveBroadcastStatus _runtimeStatus = const LiveBroadcastStatus.idle();
   bool _starting = false;
@@ -41,6 +40,7 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen>
 
   HostedSession get _session {
     return widget.hostedSession ??
+        ref.read(liveAudioBroadcastServiceProvider).activeSession ??
         HostedSession(
           roomId: widget.roomId,
           roomName: 'SyncWave Room',
@@ -56,7 +56,6 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     final service = ref.read(liveAudioBroadcastServiceProvider);
     _runtimeStatus = service.status;
     _statusSubscription = service.statusStream.listen((status) {
@@ -73,33 +72,28 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.detached) {
-      unawaited(_stopBroadcast());
-    }
-  }
-
-  @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _statusSubscription?.cancel();
-    unawaited(_stopBroadcast());
     super.dispose();
   }
 
   Future<void> _startBroadcast() async {
-    if (_starting || _runtimeStatus.isRunning) {
+    if (_starting || _runtimeStatus.isRunning || _runtimeStatus.isBusy) {
       return;
     }
     _starting = true;
 
     try {
+      final serverConnectionPin = await ref
+          .read(streamingSettingsRepositoryProvider)
+          .readServerConnectionPin();
       await ref
           .read(liveAudioBroadcastServiceProvider)
           .start(
             session: _session,
             useSystemAudio: _session.audioSourceEnabled,
             useMicrophone: _session.microphoneEnabled,
+            serverConnectionPin: serverConnectionPin,
           );
     } on AppException catch (error) {
       if (!mounted) {
@@ -125,6 +119,32 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen>
     } finally {
       _stopping = false;
     }
+  }
+
+  Future<bool> _confirmStopBroadcast() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Stop Broadcast?'),
+          content: const Text(
+            'Listeners will be disconnected and this room will close.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Stop Broadcast'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result == true;
   }
 
   Future<void> _copyToClipboard(String value, String successText) async {
@@ -405,6 +425,10 @@ class _HostLiveRoomScreenState extends ConsumerState<HostLiveRoomScreen>
             onPressed: _stopping
                 ? null
                 : () async {
+                    final shouldStop = await _confirmStopBroadcast();
+                    if (!shouldStop) {
+                      return;
+                    }
                     await _stopBroadcast();
                     if (!context.mounted) {
                       return;

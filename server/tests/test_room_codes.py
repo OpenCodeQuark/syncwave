@@ -53,3 +53,14 @@ def test_invalid_wan_room_code_rejected() -> None:
 
     assert response.status_code == 409
 
+
+def test_invalid_room_pin_rejected() -> None:
+    app = create_app()
+    with TestClient(app) as client:
+        response = client.post(
+            '/rooms',
+            json={'roomName': 'WAN', 'roomId': 'WAN-PIN01', 'pin': '12345'},
+        )
+
+    assert response.status_code == 409
+    assert 'exactly 6 digits' in response.json()['error']['message']
