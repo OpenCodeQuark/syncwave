@@ -23,6 +23,7 @@ class WanRoomService {
     required String serverWebSocketUrl,
     required String roomName,
     String? pin,
+    String? serverConnectionPin,
   }) async {
     final normalized = _serverUrlService.normalize(serverWebSocketUrl);
     final statusUrl = _serverUrlService.deriveStatusUrl(normalized);
@@ -31,7 +32,12 @@ class WanRoomService {
     final response = await _httpClient
         .post(
           endpoint,
-          headers: {'content-type': 'application/json'},
+          headers: {
+            'content-type': 'application/json',
+            if (serverConnectionPin != null &&
+                serverConnectionPin.trim().isNotEmpty)
+              'x-syncwave-server-pin': serverConnectionPin.trim(),
+          },
           body: jsonEncode({
             'roomName': roomName,
             'hostPeerId': _randomHostPeerId(),

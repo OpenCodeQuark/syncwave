@@ -50,7 +50,7 @@ class RoomScreen extends ConsumerWidget {
                 else
                   const Text('Room PIN protection: disabled'),
                 const Text(
-                  'Use browser listener to receive live audio stream in v1.1.0.',
+                  'Use the browser listener to receive the live audio stream.',
                 ),
               ],
             ),

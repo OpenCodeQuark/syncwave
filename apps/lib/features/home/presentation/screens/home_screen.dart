@@ -53,83 +53,103 @@ class HomeScreen extends ConsumerWidget {
       ],
       child: ListView(
         children: [
-          if (activeSession != null &&
-              liveStatus.phase != LiveBroadcastPhase.idle) ...[
-            SectionCard(
-              title: 'Active Broadcast',
-              subtitle: activeSession.roomName,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 10,
-                children: [
-                  Row(
-                    children: [
-                      StatusBadge(
-                        label: liveStatus.phase == LiveBroadcastPhase.running
-                            ? 'Live'
-                            : liveStatus.phase.name,
-                        tone: liveStatus.phase == LiveBroadcastPhase.running
-                            ? StatusBadgeTone.success
-                            : StatusBadgeTone.warning,
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child:
+                activeSession != null &&
+                    liveStatus.phase != LiveBroadcastPhase.idle
+                ? Padding(
+                    key: const ValueKey('active-broadcast'),
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: SectionCard(
+                      title: 'Live Now',
+                      subtitle: activeSession.roomName,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: 10,
+                        children: [
+                          Row(
+                            children: [
+                              StatusBadge(
+                                label:
+                                    liveStatus.phase ==
+                                        LiveBroadcastPhase.running
+                                    ? 'Live'
+                                    : liveStatus.phase.name,
+                                tone:
+                                    liveStatus.phase ==
+                                        LiveBroadcastPhase.running
+                                    ? StatusBadgeTone.success
+                                    : StatusBadgeTone.warning,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  activeSession.wanRoomId == null
+                                      ? activeSession.roomId
+                                      : '${activeSession.roomId} + ${activeSession.wanRoomId}',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              FilledButton.icon(
+                                onPressed: () => context.push(
+                                  RoutePaths.hostLivePath(activeSession.roomId),
+                                  extra: activeSession,
+                                ),
+                                icon: PhosphorIcon(
+                                  PhosphorIcons.arrowBendUpLeft(),
+                                ),
+                                label: const Text('Return'),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: () async {
+                                  final shouldStop =
+                                      await _confirmStopBroadcast(context);
+                                  if (!shouldStop) {
+                                    return;
+                                  }
+                                  await ref
+                                      .read(liveAudioBroadcastServiceProvider)
+                                      .stop();
+                                  await ref
+                                      .read(streamingCoordinatorProvider)
+                                      .stopLocalSession();
+                                },
+                                icon: PhosphorIcon(PhosphorIcons.stopCircle()),
+                                label: const Text('Stop'),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          activeSession.wanRoomId == null
-                              ? activeSession.roomId
-                              : '${activeSession.roomId} + ${activeSession.wanRoomId}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      FilledButton.icon(
-                        onPressed: () => context.push(
-                          RoutePaths.hostLivePath(activeSession.roomId),
-                          extra: activeSession,
-                        ),
-                        icon: PhosphorIcon(PhosphorIcons.arrowBendUpLeft()),
-                        label: const Text('Return to Room'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: () async {
-                          final shouldStop = await _confirmStopBroadcast(
-                            context,
-                          );
-                          if (!shouldStop) {
-                            return;
-                          }
-                          await ref
-                              .read(liveAudioBroadcastServiceProvider)
-                              .stop();
-                          await ref
-                              .read(streamingCoordinatorProvider)
-                              .stopLocalSession();
-                        },
-                        icon: PhosphorIcon(PhosphorIcons.stopCircle()),
-                        label: const Text('Stop Broadcast'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
+                    ),
+                  )
+                : const SizedBox.shrink(key: ValueKey('no-active-broadcast')),
+          ),
           SectionCard(
-            title: 'Local-First Ready',
-            subtitle:
-                'Host and listeners can run on the same Wi-Fi or hotspot without an external server.',
-            child: Row(
+            title: 'Network',
+            subtitle: 'Choose LAN, internet, or both when both are ready.',
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
+                const StatusBadge(
+                  label: 'LAN ready',
+                  tone: StatusBadgeTone.info,
+                ),
                 StatusBadge(
                   label: internetBroadcastReady
-                      ? 'Internet signaling connected'
-                      : 'Local network mode',
+                      ? 'Internet connected'
+                      : 'Internet optional',
                   tone: internetBroadcastReady
                       ? StatusBadgeTone.success
                       : StatusBadgeTone.info,
@@ -159,10 +179,10 @@ class HomeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           const SectionCard(
-            title: 'Recent Rooms',
+            title: 'Recent',
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: Text('No recent rooms yet')),
+              child: Center(child: Text('No recent rooms')),
             ),
           ),
         ],

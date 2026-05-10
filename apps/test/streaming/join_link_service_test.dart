@@ -24,12 +24,12 @@ void main() {
           roomPinProtected: true,
           pin: '123456',
         ),
-        appVersion: '1.1.0',
+        appVersion: '1.1.4',
       );
 
       final decoded = jsonDecode(payload) as Map<String, dynamic>;
       expect(decoded['app'], 'syncwave');
-      expect(decoded['appVersion'], '1.1.0');
+      expect(decoded['appVersion'], '1.1.4');
       expect(decoded['roomPinProtected'], isTrue);
       expect(decoded['pin'], isNull);
       expect(decoded['protocolVersion'], '1');
@@ -161,7 +161,7 @@ void main() {
       const payload = {
         'app': 'syncwave',
         'version': 1,
-        'appVersion': '1.1.0',
+        'appVersion': '1.1.4',
         'mode': 'local',
         'roomId': 'LAN-R12B9',
         'hostAddress': '192.168.1.20',

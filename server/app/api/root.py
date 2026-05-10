@@ -9,7 +9,7 @@ router = APIRouter(tags=['root'])
 @router.get('/')
 def root(settings: Settings = Depends(get_settings)) -> RedirectResponse:
     redirect_url = (
-        settings.github_redirect.strip() or 'https://github.com/rjrajujha/syncwave'
+        settings.github_redirect.strip() or 'https://github.com/OpenCodeQuark/syncwave'
     )
     if not redirect_url.startswith(('http://', 'https://')):
         redirect_url = f'https://{redirect_url}'

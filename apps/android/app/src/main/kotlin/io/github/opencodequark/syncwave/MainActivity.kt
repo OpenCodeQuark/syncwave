@@ -1,4 +1,4 @@
-package dev.rajujha.syncwave
+package io.github.opencodequark.syncwave
 
 import android.app.Activity
 import android.content.Intent
@@ -24,8 +24,8 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private val methodChannelName = "dev.rajujha.syncwave/audio_capture"
-    private val eventChannelName = "dev.rajujha.syncwave/audio_capture_events"
+    private val methodChannelName = "io.github.opencodequark.syncwave/audio_capture"
+    private val eventChannelName = "io.github.opencodequark.syncwave/audio_capture_events"
 
     private var pendingPermissionResult: MethodChannel.Result? = null
 

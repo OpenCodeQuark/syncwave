@@ -1,4 +1,4 @@
-package dev.rajujha.syncwave
+package io.github.opencodequark.syncwave
 
 import android.os.Handler
 import android.os.Looper

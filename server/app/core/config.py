@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = 'SyncWave Signaling Server'
-    app_version: str = '1.1.0'
+    app_version: str = '1.1.4'
     app_env: str = 'development'
     app_host: str = '0.0.0.0'
     app_port: int = 8000
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     pin_hash_secret: str = 'change-this-in-production'
     allowed_origins: str = '*'
     log_level: str = 'INFO'
-    github_redirect: str = 'https://github.com/rjrajujha/syncwave'
+    github_redirect: str = 'https://github.com/OpenCodeQuark/syncwave'
 
     model_config = SettingsConfigDict(
         env_file='.env',

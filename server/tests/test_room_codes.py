@@ -2,6 +2,7 @@ import re
 
 from fastapi.testclient import TestClient
 
+from app.core.config import get_settings
 from app.main import create_app
 
 
@@ -64,3 +65,51 @@ def test_invalid_room_pin_rejected() -> None:
 
     assert response.status_code == 409
     assert 'exactly 6 digits' in response.json()['error']['message']
+
+
+def test_room_lookup_does_not_expose_pin_hash() -> None:
+    app = create_app()
+    with TestClient(app) as client:
+        created = client.post(
+            '/rooms',
+            json={'roomName': 'WAN', 'roomId': 'WAN-PIN02', 'pin': '123456'},
+        )
+        response = client.get('/rooms/WAN-PIN02')
+
+    assert created.status_code == 201
+    assert response.status_code == 200
+    room = response.json()['room']
+    assert room['pinProtected'] is True
+    assert 'pinHash' not in room
+
+
+def test_protected_server_requires_pin_for_room_creation(monkeypatch) -> None:
+    monkeypatch.setenv('REQUIRE_SERVER_CONNECTION_PIN', 'true')
+    monkeypatch.setenv('SERVER_CONNECTION_PIN', '12345678')
+    get_settings.cache_clear()
+    app = create_app()
+
+    with TestClient(app) as client:
+        missing = client.post('/rooms', json={'roomName': 'WAN'})
+        malformed = client.post(
+            '/rooms',
+            headers={'x-syncwave-server-pin': '123456789'},
+            json={'roomName': 'WAN'},
+        )
+        wrong = client.post(
+            '/rooms',
+            headers={'x-syncwave-server-pin': '87654321'},
+            json={'roomName': 'WAN'},
+        )
+        created = client.post(
+            '/rooms',
+            headers={'x-syncwave-server-pin': '12345678'},
+            json={'roomName': 'WAN'},
+        )
+
+    assert missing.status_code == 401
+    assert malformed.status_code == 400
+    assert 'exactly 8 digits' in malformed.json()['error']['message']
+    assert wrong.status_code == 403
+    assert created.status_code == 201
+    get_settings.cache_clear()

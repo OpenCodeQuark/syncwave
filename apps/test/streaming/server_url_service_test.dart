@@ -45,6 +45,14 @@ void main() {
         service.normalize('https://your-server.example.com/status'),
         equals('wss://your-server.example.com/ws'),
       );
+      expect(
+        service.normalize('https://your-server.example.com/stream/join/'),
+        equals('wss://your-server.example.com/ws'),
+      );
+      expect(
+        service.normalize('wss://your-server.example.com/ws?room=WAN-RM01P'),
+        equals('wss://your-server.example.com/ws'),
+      );
     });
 
     test('derives /status URL from websocket URL', () {

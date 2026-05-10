@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -14,6 +16,7 @@ class _FakeAudioCaptureBridge extends AndroidAudioCaptureBridge {
   bool supported = true;
   bool permissionGranted = true;
   bool startCalled = false;
+  final _chunkController = StreamController<AudioCaptureChunk>.broadcast();
 
   @override
   Future<bool> isSupported() async => supported;
@@ -39,19 +42,29 @@ class _FakeAudioCaptureBridge extends AndroidAudioCaptureBridge {
 
   @override
   Stream<AudioCaptureChunk> audioChunks() {
-    return const Stream<AudioCaptureChunk>.empty();
+    return _chunkController.stream;
+  }
+
+  void emitChunk(AudioCaptureChunk chunk) {
+    _chunkController.add(chunk);
   }
 }
 
 class _FakeLocalAudioBroadcastServer extends LocalAudioBroadcastServer {
   bool startCalled = false;
   bool stopCalled = false;
+  final broadcastedChunks = <StreamAudioChunk>[];
 
   @override
   bool get isRunning => startCalled && !stopCalled;
 
   @override
   Future<void> broadcast(Uint8List bytes) async {}
+
+  @override
+  Future<void> broadcastChunk(StreamAudioChunk chunk) async {
+    broadcastedChunks.add(chunk);
+  }
 
   @override
   Future<void> start({
@@ -310,5 +323,63 @@ void main() {
 
     await service.stop();
     expect(service.activeSession, isNull);
+  });
+
+  test('muted silence chunks preserve capture sequence numbers', () async {
+    final bridge = _FakeAudioCaptureBridge();
+    final localServer = _FakeLocalAudioBroadcastServer();
+    final service = LiveAudioBroadcastService(
+      audioCaptureBridge: bridge,
+      localAudioBroadcastServer: localServer,
+      internetAudioRelayService: _FakeInternetAudioRelayService(),
+      isAndroidPlatform: () => true,
+    );
+
+    await service.start(
+      session: testSession(),
+      useSystemAudio: true,
+      useMicrophone: false,
+    );
+    await service.toggleSystemAudioMute();
+
+    final payload = Uint8List.fromList(List<int>.filled(3840, 7));
+    final silencePayload = base64Encode(Uint8List(3840));
+    bridge
+      ..emitChunk(
+        AudioCaptureChunk(
+          data: payload,
+          base64Payload: base64Encode(payload),
+          sampleRate: 48000,
+          channelCount: 1,
+          format: 'pcm16',
+          sequence: 10,
+          captureTimestampMs: 1000,
+          hostTimestampMs: 1000,
+          durationMs: 40,
+          streamStartedAtMs: 900,
+        ),
+      )
+      ..emitChunk(
+        AudioCaptureChunk(
+          data: payload,
+          base64Payload: base64Encode(payload),
+          sampleRate: 48000,
+          channelCount: 1,
+          format: 'pcm16',
+          sequence: 11,
+          captureTimestampMs: 1040,
+          hostTimestampMs: 1040,
+          durationMs: 40,
+          streamStartedAtMs: 900,
+        ),
+      );
+
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      localServer.broadcastedChunks.map((chunk) => chunk.sequence),
+      containsAllInOrder([10, 11]),
+    );
+    expect(localServer.broadcastedChunks.first.payloadBase64, silencePayload);
   });
 }

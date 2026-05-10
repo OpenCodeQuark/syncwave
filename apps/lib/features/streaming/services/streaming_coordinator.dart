@@ -45,6 +45,7 @@ class StreamingCoordinator {
     required StreamingSettings settings,
     RemoteServerStatus? remoteServerStatus,
     BroadcastDestination destination = BroadcastDestination.automatic,
+    String? serverConnectionPin,
     required bool audioSourceEnabled,
     required bool microphoneEnabled,
   }) async {
@@ -92,6 +93,7 @@ class StreamingCoordinator {
           serverWebSocketUrl: serverUrl,
           roomName: roomName,
           pin: pin,
+          serverConnectionPin: serverConnectionPin,
         );
       } on AppException catch (_) {
         if (localSession == null || explicitDestination) {

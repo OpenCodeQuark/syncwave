@@ -1,5 +1,5 @@
 class ServerConnectionPinValidationService {
-  static final _pattern = RegExp(r'^\d{8,10}$');
+  static final _pattern = RegExp(r'^\d{8}$');
 
   bool isValid(String pin) {
     return _pattern.hasMatch(pin.trim());
@@ -13,7 +13,7 @@ class ServerConnectionPinValidationService {
 
     if (!isValid(raw)) {
       throw const FormatException(
-        'Server Connection PIN must be 8 to 10 digits.',
+        'Server Connection PIN must be exactly 8 digits.',
       );
     }
 

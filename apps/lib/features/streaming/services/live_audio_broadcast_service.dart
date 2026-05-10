@@ -45,7 +45,6 @@ class LiveAudioBroadcastService {
   bool _systemAudioMuted = false;
   bool _microphoneMuted = true;
   bool _isStopping = false;
-  int _syntheticSequence = 0;
   final Map<int, String> _silentBase64Cache = <int, String>{};
 
   Stream<LiveBroadcastStatus> get statusStream => _statusController.stream;
@@ -77,7 +76,7 @@ class LiveAudioBroadcastService {
 
     if (!_isAndroidPlatform()) {
       throw AppException(
-        'Broadcast hosting is currently supported on Android only. iOS is listener-first in v1.1.0.',
+        'Broadcast hosting is currently supported on Android only. iOS is listener-first for now.',
         code: 'host_unsupported_platform',
       );
     }
@@ -127,7 +126,6 @@ class LiveAudioBroadcastService {
       _internetTransportActive = false;
       _systemAudioMuted = false;
       _microphoneMuted = true;
-      _syntheticSequence = 0;
       _silentBase64Cache.clear();
 
       if (useSystemAudio) {
@@ -435,11 +433,10 @@ class LiveAudioBroadcastService {
       final silentBytes = Uint8List(payloadLength);
       return base64Encode(silentBytes);
     });
-    _syntheticSequence += 1;
 
     return StreamAudioChunk(
       roomId: roomId,
-      sequence: originalChunk.sequence + _syntheticSequence,
+      sequence: originalChunk.sequence,
       captureTimestampMs: originalChunk.captureTimestampMs,
       hostTimestampMs: originalChunk.hostTimestampMs,
       sampleRate: originalChunk.sampleRate,
@@ -617,6 +614,5 @@ class LiveAudioBroadcastService {
     _systemAudioMuted = false;
     _microphoneMuted = true;
     _silentBase64Cache.clear();
-    _syntheticSequence = 0;
   }
 }

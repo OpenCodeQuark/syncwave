@@ -9,7 +9,7 @@ def test_root_redirects_to_project_repository() -> None:
         response = client.get('/', follow_redirects=False)
 
     assert response.status_code in {302, 307}
-    assert response.headers['location'] == 'https://github.com/rjrajujha/syncwave'
+    assert response.headers['location'] == 'https://github.com/OpenCodeQuark/syncwave'
 
 
 def test_root_redirect_uses_env_override(monkeypatch) -> None:
@@ -43,7 +43,7 @@ def test_status_endpoint_returns_json() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload['app'] == 'SyncWave Signaling Server'
-    assert payload['version'] == '1.1.0'
+    assert payload['version'] == '1.1.4'
     assert payload['status'] == 'ok'
     assert payload['websocketPath'] == '/ws'
     assert isinstance(payload['activeRooms'], int)
@@ -69,8 +69,13 @@ def test_stream_join_route_serves_html() -> None:
     assert 'text/html' in response.headers['content-type']
     assert 'SyncWave' in response.text
     assert 'WAN-RM01P' in response.text
-    assert 'serverPinInput' in response.text
-    assert "appVersion: '1.1.0'" in response.text
+    assert "appVersion: '1.1.4'" in response.text
+    assert 'serverPinInput' not in response.text
+    assert "clientRole: 'listener'" in response.text
+    assert 'let targetBufferMs = 420' in response.text
+    assert 'function failConnection' in response.text
+    assert 'unlockConnectSoon' in response.text
+    assert 'function enqueueSilence' in response.text
 
 
 def test_favicon_route_serves_icon() -> None:

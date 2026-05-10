@@ -31,10 +31,10 @@ class AudioCaptureChunk {
 
 class AndroidAudioCaptureBridge {
   static const _methodChannel = MethodChannel(
-    'dev.rajujha.syncwave/audio_capture',
+    'io.github.opencodequark.syncwave/audio_capture',
   );
   static const _eventChannel = EventChannel(
-    'dev.rajujha.syncwave/audio_capture_events',
+    'io.github.opencodequark.syncwave/audio_capture_events',
   );
 
   Stream<Map<String, dynamic>>? _events;
@@ -83,8 +83,11 @@ class AndroidAudioCaptureBridge {
     return rawEvents().where((event) => event['type'] == 'audio_chunk').map((
       event,
     ) {
-      final encoded = event['data']?.toString() ?? '';
-      final decoded = base64Decode(encoded);
+      final rawData = event['data'];
+      final decoded = rawData is Uint8List
+          ? rawData
+          : base64Decode(rawData?.toString() ?? '');
+      final encoded = rawData is String ? rawData : base64Encode(decoded);
       final sampleRate = _toInt(event['sampleRate']) ?? 48000;
       final channelCount = _toInt(event['channelCount']) ?? 1;
       final format = event['format']?.toString() ?? 'pcm16';

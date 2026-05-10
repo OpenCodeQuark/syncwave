@@ -1,8 +1,10 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
+from ..core.config import Settings, get_settings
+from ..core.security import is_valid_server_connection_pin
 from ..services.room_service import RoomService
 
 router = APIRouter(prefix='/rooms', tags=['rooms'])
@@ -30,13 +32,20 @@ def get_room(room_id: str, request: Request) -> dict:
     if room is None:
         raise HTTPException(status_code=404, detail='Room not found')
 
+    payload = room.model_dump(by_alias=True, mode='json')
+    payload.pop('pinHash', None)
     return {
-        'room': room.model_dump(by_alias=True, mode='json'),
+        'room': payload,
     }
 
 
 @router.post('', response_model=CreateRoomResponse, status_code=status.HTTP_201_CREATED)
-def create_room(payload: CreateRoomRequest, request: Request) -> CreateRoomResponse:
+def create_room(
+    payload: CreateRoomRequest,
+    request: Request,
+    settings: Settings = Depends(get_settings),
+) -> CreateRoomResponse:
+    _require_server_pin_for_host_action(request=request, settings=settings)
     room_service: RoomService = request.app.state.room_service
     try:
         room = room_service.create_room(
@@ -55,3 +64,27 @@ def create_room(payload: CreateRoomRequest, request: Request) -> CreateRoomRespo
         roomName=room.room_name,
         pinProtected=room.pin_protected,
     )
+
+
+def _require_server_pin_for_host_action(*, request: Request, settings: Settings) -> None:
+    if not settings.require_server_connection_pin:
+        return
+
+    provided_pin = (request.headers.get('x-syncwave-server-pin') or '').strip()
+    if not provided_pin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Server Connection PIN is required for host actions.',
+        )
+    if not is_valid_server_connection_pin(provided_pin):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Server Connection PIN must be exactly 8 digits.',
+        )
+
+    expected_pin = settings.server_connection_pin.strip()
+    if not is_valid_server_connection_pin(expected_pin) or provided_pin != expected_pin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Server Connection PIN validation failed.',
+        )

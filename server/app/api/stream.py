@@ -23,46 +23,77 @@ def browser_stream_join(request: Request) -> HTMLResponse:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#f8fafc" />
   <title>SyncWave Listener</title>
   <link rel="icon" href="/favicon.ico" />
   <style>
-    :root {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
+    :root {{
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }}
+    * {{ box-sizing: border-box; }}
     body {{
-      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      padding: 16px; background: linear-gradient(180deg, #f5f7ff 0%, #ecfeff 100%); color: #0f172a;
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background:
+        radial-gradient(circle at 18% 8%, rgba(8,127,140,.18), transparent 32%),
+        radial-gradient(circle at 86% 20%, rgba(122,92,250,.14), transparent 30%),
+        linear-gradient(180deg, #f8fafc 0%, #eaf7f7 100%);
+      color: #0f172a;
     }}
     .card {{
-      width: 100%; max-width: 560px; background: rgba(255,255,255,.95);
-      border: 1px solid #dbe3f0; border-radius: 18px; box-shadow: 0 10px 30px rgba(15,23,42,.08);
-      padding: 18px;
+      width: min(100%, 560px);
+      background: rgba(255,255,255,.82);
+      border: 1px solid rgba(148,163,184,.34);
+      border-radius: 24px;
+      box-shadow: 0 24px 70px rgba(15,23,42,.14);
+      padding: 20px;
+      backdrop-filter: blur(18px);
     }}
-    h1 {{ margin: 0 0 4px; font-size: 22px; }}
+    .brand {{ display: flex; align-items: center; gap: 12px; }}
+    .logo {{
+      width: 46px; height: 46px; border-radius: 14px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, #087f8c, #7a5cfa);
+      color: white; font-weight: 900; letter-spacing: 0;
+      box-shadow: 0 12px 30px rgba(8,127,140,.24);
+    }}
+    h1 {{ margin: 0 0 3px; font-size: clamp(22px, 6vw, 30px); line-height: 1.05; }}
     .muted {{ color: #475569; font-size: 14px; }}
     .status {{
-      margin-top: 12px; display: inline-flex; align-items: center; gap: 8px;
-      border: 1px solid #cbd5e1; border-radius: 999px; padding: 7px 11px;
+      margin-top: 16px; display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid rgba(148,163,184,.44); border-radius: 999px; padding: 8px 12px;
       font-size: 13px; font-weight: 700;
-      background: #f8fafc;
+      background: rgba(248,250,252,.86);
     }}
     .dot {{ width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }}
     .status.playing .dot {{ background: #16a34a; }}
     .status.buffering .dot, .status.rebuffering .dot {{ background: #f59e0b; }}
     .status.error .dot, .status.disconnected .dot {{ background: #dc2626; }}
-    .grid {{ margin-top: 14px; display: grid; gap: 10px; }}
+    .grid {{ margin-top: 18px; display: grid; gap: 12px; }}
     label {{ font-size: 13px; color: #334155; font-weight: 600; }}
     input[type="text"], input[type="password"] {{
-      width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 10px;
-      padding: 10px 11px; font-size: 15px;
+      width: 100%; border: 1px solid rgba(148,163,184,.5); border-radius: 14px;
+      padding: 13px 14px; font-size: 16px; background: rgba(255,255,255,.9);
+      outline: none;
+    }}
+    input[type="text"]:focus, input[type="password"]:focus {{
+      border-color: #087f8c; box-shadow: 0 0 0 4px rgba(8,127,140,.12);
     }}
     .row {{ display: flex; gap: 10px; }}
     .row > * {{ flex: 1; }}
     .btn {{
-      border: 0; border-radius: 12px; cursor: pointer; font-size: 15px; font-weight: 700;
-      padding: 11px 14px; color: white; background: #0f766e;
+      min-height: 48px; border: 0; border-radius: 14px; cursor: pointer;
+      font-size: 15px; font-weight: 800;
+      padding: 12px 14px; color: white; background: linear-gradient(135deg, #087f8c, #0f766e);
+      box-shadow: 0 10px 24px rgba(8,127,140,.22);
     }}
-    .btn.secondary {{ background: #334155; }}
+    .btn.secondary {{ background: #334155; box-shadow: none; }}
     .btn:disabled {{ opacity: .6; cursor: not-allowed; }}
-    .controls {{ margin-top: 14px; display: grid; gap: 10px; }}
+    .controls {{ margin-top: 16px; display: grid; gap: 10px; }}
     .small-row {{ display: flex; justify-content: space-between; font-size: 13px; color: #475569; }}
     input[type="range"] {{ width: 100%; accent-color: #0f766e; }}
     .error {{ min-height: 20px; color: #dc2626; font-size: 13px; font-weight: 600; }}
@@ -72,12 +103,22 @@ def browser_stream_join(request: Request) -> HTMLResponse:
     }}
     .footer a {{ color: inherit; text-decoration: none; }}
     .heart {{ color: #e11d48; }}
+    @media (max-width: 420px) {{
+      body {{ padding: 12px; place-items: stretch; }}
+      .card {{ align-self: center; padding: 16px; border-radius: 20px; }}
+      .row {{ flex-direction: column; }}
+    }}
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>SyncWave</h1>
-    <div class="muted">Internet listener</div>
+    <div class="brand">
+      <div class="logo" aria-hidden="true">S</div>
+      <div>
+        <h1>SyncWave</h1>
+        <div class="muted">Internet listener</div>
+      </div>
+    </div>
     <div id="statusBadge" class="status disconnected">
       <span class="dot"></span><span id="statusText">Disconnected</span>
     </div>
@@ -103,16 +144,6 @@ def browser_stream_join(request: Request) -> HTMLResponse:
           value="{escape(pin)}"
         />
       </div>
-      <div>
-        <label for="serverPinInput">Server Connection PIN (if required)</label>
-        <input
-          id="serverPinInput"
-          type="password"
-          inputmode="numeric"
-          maxlength="10"
-          placeholder="8 to 10 digits"
-        />
-      </div>
       <div class="row">
         <button id="connectBtn" class="btn">Connect</button>
         <button id="toggleBtn" class="btn secondary" disabled>Play</button>
@@ -132,7 +163,7 @@ def browser_stream_join(request: Request) -> HTMLResponse:
         <a href="https://rjrajujha.github.io" target="_blank" rel="noreferrer">R. Jha</a>
       </div>
       <a
-        href="https://github.com/rjrajujha/syncwave"
+        href="https://github.com/OpenCodeQuark/syncwave"
         target="_blank"
         rel="noreferrer"
         aria-label="GitHub"
@@ -143,7 +174,6 @@ def browser_stream_join(request: Request) -> HTMLResponse:
   <script>
     const roomInput = document.getElementById('roomInput');
     const pinInput = document.getElementById('pinInput');
-    const serverPinInput = document.getElementById('serverPinInput');
     const connectBtn = document.getElementById('connectBtn');
     const toggleBtn = document.getElementById('toggleBtn');
     const volumeSlider = document.getElementById('volumeSlider');
@@ -159,15 +189,18 @@ def browser_stream_join(request: Request) -> HTMLResponse:
     let gainNode = null;
     let pingTimer = null;
     let scheduler = null;
+    let retryUnlockTimer = null;
     let peerId = null;
 
     let queue = [];
     let queuedMs = 0;
     let started = false;
     let nextPlayTime = 0;
-    let targetBufferMs = 260;
-    let maxBufferMs = 650;
+    let targetBufferMs = 420;
+    let maxBufferMs = 1200;
     let lastSeq = null;
+    let nominalChunkDurationMs = 40;
+    const maxGapFillChunks = 8;
     let readyForRoomJoin = false;
 
     function setStatus(label, cssClass) {{
@@ -177,6 +210,63 @@ def browser_stream_join(request: Request) -> HTMLResponse:
 
     function setError(message) {{
       errorText.textContent = message || '';
+    }}
+
+    function unlockConnectSoon(delayMs = 1200) {{
+      if (retryUnlockTimer) {{
+        clearTimeout(retryUnlockTimer);
+      }}
+      retryUnlockTimer = setTimeout(() => {{
+        connectBtn.disabled = false;
+        retryUnlockTimer = null;
+      }}, delayMs);
+    }}
+
+    function resetPlaybackQueue() {{
+      queue = [];
+      queuedMs = 0;
+      started = false;
+      lastSeq = null;
+      readyForRoomJoin = false;
+      if (audioCtx) {{
+        nextPlayTime = audioCtx.currentTime + 0.16;
+      }} else {{
+        nextPlayTime = 0;
+      }}
+      updateBufferLabel();
+    }}
+
+    function closeSocketForRetry() {{
+      stopPingLoop();
+      const socket = ws;
+      ws = null;
+      if (!socket) {{
+        return;
+      }}
+      socket.onclose = null;
+      socket.onerror = null;
+      try {{
+        socket.close();
+      }} catch (_) {{}}
+    }}
+
+    function failConnection(message) {{
+      setStatus('Error', 'error');
+      setError(message || 'Unable to join room.');
+      closeSocketForRetry();
+      started = false;
+      readyForRoomJoin = false;
+      toggleBtn.disabled = true;
+      unlockConnectSoon();
+    }}
+
+    function applyStreamMeta(payload = {{}}) {{
+      targetBufferMs = Number(payload.targetBufferMs || payload.targetBuffer || 420);
+      const duration = Number(payload.durationMs || 0);
+      if (duration > 0) {{
+        nominalChunkDurationMs = duration;
+      }}
+      updateBufferLabel();
     }}
 
     function validateRoomCode(room) {{
@@ -220,22 +310,31 @@ def browser_stream_join(request: Request) -> HTMLResponse:
       return out;
     }}
 
+    function enqueueBuffer(buffer, durationMs) {{
+      queue.push({{ buffer, durationMs }});
+      queuedMs += durationMs;
+
+      while (queuedMs > maxBufferMs * 2 && queue.length > 1) {{
+        const dropped = queue.shift();
+        if (!dropped) break;
+        queuedMs = Math.max(0, queuedMs - dropped.durationMs);
+        started = false;
+        setStatus('Rebuffering', 'rebuffering');
+      }}
+    }}
+
+    function enqueueSilence(sampleRate, channelCount, durationMs) {{
+      const safeChannels = Math.max(1, channelCount || 1);
+      const frames = Math.max(1, Math.round(sampleRate * durationMs / 1000));
+      const silence = audioCtx.createBuffer(safeChannels, frames, sampleRate);
+      enqueueBuffer(silence, durationMs);
+    }}
+
     function enqueueChunk(payload) {{
       const seq = Number(payload.sequence || 0);
       if (lastSeq !== null && seq <= lastSeq) {{
         return;
       }}
-      if (lastSeq !== null && seq > lastSeq + 1) {{
-        setError('Network jitter detected. Rebuffering...');
-        started = false;
-        if (audioCtx) {{
-          nextPlayTime = Math.max(audioCtx.currentTime + 0.08, nextPlayTime);
-        }}
-      }} else if (errorText.textContent.startsWith('Network jitter')) {{
-        setError('');
-      }}
-      lastSeq = seq;
-
       const sampleRate = Number(payload.sampleRate || 48000);
       const channelCount = Number(payload.channelCount || 1);
       const durationMs = Number(payload.durationMs || 0);
@@ -260,8 +359,30 @@ def browser_stream_join(request: Request) -> HTMLResponse:
       const chunkDurationMs = durationMs > 0
         ? durationMs
         : Math.round((frameCount / sampleRate) * 1000);
-      queue.push({{ buffer: audioBuffer, durationMs: chunkDurationMs }});
-      queuedMs += chunkDurationMs;
+      if (lastSeq !== null && seq > lastSeq + 1) {{
+        const missing = seq - lastSeq - 1;
+        const fillCount = Math.min(missing, maxGapFillChunks);
+        for (let i = 0; i < fillCount; i++) {{
+          enqueueSilence(sampleRate, channelCount, nominalChunkDurationMs || chunkDurationMs || 40);
+        }}
+        setError(
+          missing > maxGapFillChunks
+            ? 'Stream gap detected. Rebuffering for smoother playback...'
+            : 'Minor network jitter smoothed with silence fill.'
+        );
+        if (missing > maxGapFillChunks && audioCtx) {{
+          started = false;
+          nextPlayTime = Math.max(audioCtx.currentTime + 0.14, nextPlayTime);
+        }}
+      }} else if (
+        errorText.textContent.startsWith('Minor network jitter') ||
+        errorText.textContent.startsWith('Stream gap')
+      ) {{
+        setError('');
+      }}
+      lastSeq = seq;
+      nominalChunkDurationMs = chunkDurationMs > 0 ? chunkDurationMs : nominalChunkDurationMs;
+      enqueueBuffer(audioBuffer, chunkDurationMs);
     }}
 
     function schedulePlayback() {{
@@ -278,21 +399,22 @@ def browser_stream_join(request: Request) -> HTMLResponse:
           return;
         }}
         started = true;
-        nextPlayTime = Math.max(audioCtx.currentTime + 0.06, nextPlayTime);
+        nextPlayTime = Math.max(audioCtx.currentTime + 0.14, nextPlayTime);
         setStatus('Playing', 'playing');
         sendEvent('listener.playing', {{ queuedMs: Math.round(queuedMs) }});
       }}
 
       while (queue.length > 0) {{
         const aheadMs = (nextPlayTime - audioCtx.currentTime) * 1000;
-        if (aheadMs < -20) {{
+        if (aheadMs < -50) {{
           started = false;
           setStatus('Rebuffering', 'rebuffering');
           sendEvent('listener.buffering', {{ queuedMs: Math.round(queuedMs) }});
+          nextPlayTime = audioCtx.currentTime + 0.14;
           break;
         }}
         if (aheadMs > maxBufferMs) {{
-          nextPlayTime -= Math.min((aheadMs - maxBufferMs) / 1000, 0.04);
+          break;
         }}
 
         const item = queue.shift();
@@ -324,7 +446,6 @@ def browser_stream_join(request: Request) -> HTMLResponse:
       }}
       const roomCode = roomInput.value.trim().toUpperCase();
       const pin = pinInput.value.trim();
-      const serverPin = serverPinInput.value.trim();
       ws.send(JSON.stringify({{
         type: 'room.join',
         roomId: roomCode,
@@ -357,9 +478,11 @@ def browser_stream_join(request: Request) -> HTMLResponse:
     }}
 
     function connect() {{
+      if (connectBtn.disabled) {{
+        return;
+      }}
       const roomCode = roomInput.value.trim().toUpperCase();
       const pin = pinInput.value.trim();
-      const serverPin = serverPinInput.value.trim();
       if (!roomCode) {{
         setError('Enter room code to continue.');
         return;
@@ -372,39 +495,29 @@ def browser_stream_join(request: Request) -> HTMLResponse:
         setError('PIN must be exactly 6 digits.');
         return;
       }}
-      if (serverPin && !/^\\d{{8,10}}$/.test(serverPin)) {{
-        setError('Server Connection PIN must be 8 to 10 digits.');
-        return;
-      }}
-
       ensureAudio();
       setError('');
-      queue = [];
-      queuedMs = 0;
-      started = false;
-      nextPlayTime = audioCtx.currentTime + 0.06;
-      lastSeq = null;
-      readyForRoomJoin = false;
+      resetPlaybackQueue();
 
-      if (ws) {{
-        ws.close();
-      }}
+      closeSocketForRetry();
 
       peerId = 'web_' + Math.random().toString(36).slice(2, 10);
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
       const wsUrl = proto + '://' + location.host + '/ws?peerId=' + peerId;
-      ws = new WebSocket(wsUrl);
+      const socket = new WebSocket(wsUrl);
+      ws = socket;
       setStatus('Connecting', 'connecting');
       connectBtn.disabled = true;
       toggleBtn.disabled = false;
 
-      ws.onopen = async () => {{
+      socket.onopen = async () => {{
         if (audioCtx.state !== 'running') {{
           await audioCtx.resume();
         }}
+        toggleBtn.textContent = 'Pause';
       }};
 
-      ws.onmessage = (event) => {{
+      socket.onmessage = (event) => {{
         if (typeof event.data !== 'string') {{
           return;
         }}
@@ -422,10 +535,11 @@ def browser_stream_join(request: Request) -> HTMLResponse:
               type: 'server.hello',
               payload: {{
                 appName: 'SyncWave Browser Listener',
-                appVersion: '1.1.0',
+                appVersion: '1.1.4',
                 protocolVersion: '1',
                 clientPlatform: 'web',
-                ...(serverPin ? {{ serverConnectionPin: serverPin }} : {{}}),
+                clientRole: 'listener',
+                listenerOnly: true,
               }},
             }}));
             break;
@@ -443,14 +557,13 @@ def browser_stream_join(request: Request) -> HTMLResponse:
           case 'server.auth_failed':
           case 'server.unsupported_version':
           case 'error':
-            setStatus('Error', 'error');
-            setError(decoded.payload?.message || 'Unable to join room.');
+            failConnection(decoded.payload?.message || 'Unable to join room.');
+            break;
+          case 'stream.listener_joined':
+            applyStreamMeta(decoded.payload || {{}});
             break;
           case 'stream.meta':
-            targetBufferMs = Number(
-              decoded.payload?.targetBufferMs || decoded.targetBufferMs || 260
-            );
-            updateBufferLabel();
+            applyStreamMeta(decoded.payload || decoded || {{}});
             break;
           case 'stream.audio_chunk':
             enqueueChunk(decoded.payload || {{}});
@@ -465,19 +578,22 @@ def browser_stream_join(request: Request) -> HTMLResponse:
             break;
           }}
           case 'stream.host_stopped':
-            setStatus('Disconnected', 'disconnected');
-            setError('Host ended the stream.');
+            failConnection('Host ended the stream.');
             break;
         }}
       }};
 
-      ws.onerror = () => {{
-        setStatus('Error', 'error');
-        setError('Failed to connect to stream server.');
+      socket.onerror = () => {{
+        failConnection('Failed to connect to stream server.');
       }};
 
-      ws.onclose = () => {{
+      socket.onclose = () => {{
+        if (ws !== socket) {{
+          return;
+        }}
+        ws = null;
         connectBtn.disabled = false;
+        toggleBtn.disabled = true;
         stopPingLoop();
         started = false;
         setStatus('Disconnected', 'disconnected');
@@ -520,6 +636,7 @@ def browser_stream_join(request: Request) -> HTMLResponse:
 
     window.addEventListener('beforeunload', () => {{
       stopPingLoop();
+      if (retryUnlockTimer) clearTimeout(retryUnlockTimer);
       if (scheduler) clearInterval(scheduler);
       if (ws) ws.close();
       if (audioCtx) audioCtx.close();

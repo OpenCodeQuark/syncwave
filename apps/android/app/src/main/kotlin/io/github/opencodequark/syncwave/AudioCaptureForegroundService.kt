@@ -1,4 +1,4 @@
-package dev.rajujha.syncwave
+package io.github.opencodequark.syncwave
 
 import android.app.Activity
 import android.app.Notification
@@ -21,7 +21,6 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
 import android.os.Process
-import android.util.Base64
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -32,8 +31,8 @@ class AudioCaptureForegroundService : Service() {
     companion object {
         private const val TAG = "SyncWave.AudioCaptureService"
 
-        const val ACTION_START = "dev.rajujha.syncwave.audio.START"
-        const val ACTION_STOP = "dev.rajujha.syncwave.audio.STOP"
+        const val ACTION_START = "io.github.opencodequark.syncwave.audio.START"
+        const val ACTION_STOP = "io.github.opencodequark.syncwave.audio.STOP"
 
         const val EXTRA_USE_SYSTEM_AUDIO = "extra_use_system_audio"
         const val EXTRA_USE_MICROPHONE = "extra_use_microphone"
@@ -363,14 +362,13 @@ class AudioCaptureForegroundService : Service() {
     }
 
     private fun emitAudioFrame(raw: ByteArray, sampleRate: Int) {
-        val encoded = Base64.encodeToString(raw, Base64.NO_WRAP)
         val sampleCount = raw.size / 2
         val durationMs = ((sampleCount.toDouble() / sampleRate.toDouble()) * 1000.0).toLong()
         val captureTimestamp = System.currentTimeMillis()
         AudioCaptureEventBus.emit(
             mapOf(
                 "type" to "audio_chunk",
-                "data" to encoded,
+                "data" to raw,
                 "format" to "pcm16",
                 "sampleRate" to sampleRate,
                 "channelCount" to 1,

@@ -38,7 +38,7 @@ class StreamingSettingsController extends AsyncNotifier<StreamingSettings> {
     if (trimmedServerPin.isNotEmpty &&
         !_repository.isValidServerConnectionPin(trimmedServerPin)) {
       throw AppException(
-        'Server Connection PIN must be 8 to 10 digits.',
+        'Server Connection PIN must be exactly 8 digits.',
         code: 'invalid_server_connection_pin',
       );
     }

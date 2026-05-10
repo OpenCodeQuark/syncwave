@@ -5,13 +5,14 @@ void main() {
   group('ServerConnectionPinValidationService', () {
     final service = ServerConnectionPinValidationService();
 
-    test('accepts 8-10 digit pins', () {
+    test('accepts exactly 8 digit pins', () {
       expect(service.isValid('12345678'), isTrue);
-      expect(service.isValid('1234567890'), isTrue);
     });
 
     test('rejects invalid server connection pins', () {
       expect(service.isValid('1234567'), isFalse);
+      expect(service.isValid('123456789'), isFalse);
+      expect(service.isValid('1234567890'), isFalse);
       expect(service.isValid('12345678901'), isFalse);
       expect(service.isValid('abc12345'), isFalse);
       expect(service.isValid('1234 5678'), isFalse);

@@ -27,7 +27,7 @@ val hasReleaseSigningConfig =
         keystoreProperty("keyPassword").isNotEmpty()
 
 android {
-    namespace = "dev.rajujha.syncwave"
+    namespace = "io.github.opencodequark.syncwave"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -41,7 +41,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "dev.rajujha.syncwave"
+        applicationId = "io.github.opencodequark.syncwave"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

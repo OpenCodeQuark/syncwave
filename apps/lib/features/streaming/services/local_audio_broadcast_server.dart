@@ -61,8 +61,9 @@ class LocalAudioBroadcastServer {
   int _sampleRate = 48000;
   int _channelCount = 1;
   String _format = 'pcm16';
-  final int _targetBufferMs = 260;
+  final int _targetBufferMs = 420;
   int _syncTick = 0;
+  int _fallbackSequence = 0;
 
   bool get isRunning => _server != null;
   int get listenerCount => _listeners.length;
@@ -87,6 +88,7 @@ class LocalAudioBroadcastServer {
     _roomPinProtected = roomPinProtected;
     _roomPin = roomPinProtected ? roomPin?.trim() : null;
     _streamStartedAtMs = DateTime.now().millisecondsSinceEpoch;
+    _fallbackSequence = 0;
 
     try {
       _server = await HttpServer.bind(
@@ -255,7 +257,7 @@ class LocalAudioBroadcastServer {
     final durationMs = ((bytes.length / 2) / _sampleRate * 1000).round();
     final chunk = StreamAudioChunk(
       roomId: roomId,
-      sequence: now,
+      sequence: _fallbackSequence++,
       captureTimestampMs: now,
       hostTimestampMs: now,
       sampleRate: _sampleRate,
@@ -351,6 +353,7 @@ class LocalAudioBroadcastServer {
     _sampleRate = 48000;
     _channelCount = 1;
     _format = 'pcm16';
+    _fallbackSequence = 0;
     await server?.close(force: true);
     _emitListenerCount();
   }
@@ -573,7 +576,7 @@ class LocalAudioBroadcastServer {
     </div>
     <div class="footer">
       <div>Made with <span class="heart">♥</span> by <a href="https://rjrajujha.github.io" target="_blank" rel="noreferrer">R. Jha</a></div>
-      <a href="https://github.com/rjrajujha/syncwave" target="_blank" rel="noreferrer" aria-label="GitHub">🐙</a>
+      <a href="https://github.com/OpenCodeQuark/syncwave" target="_blank" rel="noreferrer" aria-label="GitHub">🐙</a>
     </div>
   </div>
 
@@ -596,14 +599,17 @@ class LocalAudioBroadcastServer {
     let gainNode = null;
     let pingTimer = null;
     let scheduleTimer = null;
+    let retryUnlockTimer = null;
 
     let started = false;
     let nextPlayTime = 0;
-    let targetBufferMs = 260;
-    let maxBufferMs = 650;
+    let targetBufferMs = 420;
+    let maxBufferMs = 1200;
     let queue = [];
     let queuedMs = 0;
     let lastSequence = null;
+    let nominalChunkDurationMs = 40;
+    const maxGapFillChunks = 6;
 
     function setStatus(label, cssClass) {
       statusText.textContent = label;
@@ -612,6 +618,48 @@ class LocalAudioBroadcastServer {
 
     function setError(message) {
       errorText.textContent = message || '';
+    }
+
+    function unlockConnectSoon(delayMs = 1200) {
+      if (retryUnlockTimer) {
+        clearTimeout(retryUnlockTimer);
+      }
+      retryUnlockTimer = setTimeout(() => {
+        connectBtn.disabled = false;
+        retryUnlockTimer = null;
+      }, delayMs);
+    }
+
+    function resetPlaybackQueue() {
+      queue = [];
+      queuedMs = 0;
+      started = false;
+      lastSequence = null;
+      nextPlayTime = audioCtx ? audioCtx.currentTime + 0.16 : 0;
+      updateBufferLabel();
+    }
+
+    function closeSocketForRetry() {
+      stopPingLoop();
+      const socket = ws;
+      ws = null;
+      if (!socket) {
+        return;
+      }
+      socket.onclose = null;
+      socket.onerror = null;
+      try {
+        socket.close();
+      } catch (_) {}
+    }
+
+    function failConnection(message) {
+      setStatus('Error', 'error');
+      setError(message || 'Could not connect to stream.');
+      closeSocketForRetry();
+      started = false;
+      toggleBtn.disabled = true;
+      unlockConnectSoon();
     }
 
     function updateBufferLabel() {
@@ -652,22 +700,31 @@ class LocalAudioBroadcastServer {
       return buffer;
     }
 
+    function enqueueBuffer(buffer, durationMs) {
+      queue.push({ buffer, durationMs });
+      queuedMs += durationMs;
+
+      while (queuedMs > maxBufferMs * 2 && queue.length > 1) {
+        const dropped = queue.shift();
+        if (!dropped) break;
+        queuedMs = Math.max(0, queuedMs - dropped.durationMs);
+        started = false;
+        setStatus('Rebuffering', 'rebuffering');
+      }
+    }
+
+    function enqueueSilence(sampleRate, channelCount, durationMs) {
+      const safeChannels = Math.max(1, channelCount || 1);
+      const frames = Math.max(1, Math.round(sampleRate * durationMs / 1000));
+      const silence = audioCtx.createBuffer(safeChannels, frames, sampleRate);
+      enqueueBuffer(silence, durationMs);
+    }
+
     function enqueueChunk(event) {
       const seq = Number(event.sequence || 0);
       if (lastSequence !== null && seq <= lastSequence) {
         return;
       }
-      if (lastSequence !== null && seq > lastSequence + 1) {
-        setError('Minor network jitter detected. Rebuffering smoothly...');
-        started = false;
-        if (audioCtx) {
-          nextPlayTime = Math.max(audioCtx.currentTime + 0.08, nextPlayTime);
-        }
-      } else if (errorText.textContent.startsWith('Minor network jitter')) {
-        setError('');
-      }
-      lastSequence = seq;
-
       const sampleRate = Number(event.sampleRate || 48000);
       const channelCount = Number(event.channelCount || 1);
       const durationMs = Number(event.durationMs || 0);
@@ -690,8 +747,30 @@ class LocalAudioBroadcastServer {
       }
 
       const chunkDurationMs = durationMs > 0 ? durationMs : Math.round((frameCount / sampleRate) * 1000);
-      queue.push({ buffer: audioBuffer, durationMs: chunkDurationMs });
-      queuedMs += chunkDurationMs;
+      if (lastSequence !== null && seq > lastSequence + 1) {
+        const missing = seq - lastSequence - 1;
+        const fillCount = Math.min(missing, maxGapFillChunks);
+        for (let i = 0; i < fillCount; i++) {
+          enqueueSilence(sampleRate, channelCount, nominalChunkDurationMs || chunkDurationMs || 40);
+        }
+        setError(
+          missing > maxGapFillChunks
+            ? 'Stream gap detected. Rebuffering for smoother playback...'
+            : 'Minor network jitter smoothed with silence fill.'
+        );
+        if (missing > maxGapFillChunks && audioCtx) {
+          started = false;
+          nextPlayTime = Math.max(audioCtx.currentTime + 0.16, nextPlayTime);
+        }
+      } else if (
+        errorText.textContent.startsWith('Minor network jitter') ||
+        errorText.textContent.startsWith('Stream gap')
+      ) {
+        setError('');
+      }
+      lastSequence = seq;
+      nominalChunkDurationMs = chunkDurationMs > 0 ? chunkDurationMs : nominalChunkDurationMs;
+      enqueueBuffer(audioBuffer, chunkDurationMs);
     }
 
     function schedulePlayback() {
@@ -708,22 +787,23 @@ class LocalAudioBroadcastServer {
           return;
         }
         started = true;
-        nextPlayTime = Math.max(audioCtx.currentTime + 0.06, nextPlayTime);
+        nextPlayTime = Math.max(audioCtx.currentTime + 0.16, nextPlayTime);
         setStatus('Playing', 'playing');
         sendClientEvent('listener.playing', { queuedMs: Math.round(queuedMs) });
       }
 
       while (queue.length > 0) {
         const aheadMs = (nextPlayTime - audioCtx.currentTime) * 1000;
-        if (aheadMs < -20) {
+        if (aheadMs < -40) {
           started = false;
           setStatus('Rebuffering', 'rebuffering');
           sendClientEvent('listener.buffering', { queuedMs: Math.round(queuedMs) });
+          nextPlayTime = audioCtx.currentTime + 0.16;
           break;
         }
 
         if (aheadMs > maxBufferMs) {
-          nextPlayTime -= Math.min((aheadMs - maxBufferMs) / 1000, 0.04);
+          break;
         }
 
         const item = queue.shift();
@@ -764,6 +844,9 @@ class LocalAudioBroadcastServer {
     }
 
     function connect() {
+      if (connectBtn.disabled) {
+        return;
+      }
       const roomCode = roomInput.value.trim().toUpperCase();
       const pin = pinInput.value.trim();
 
@@ -785,16 +868,10 @@ class LocalAudioBroadcastServer {
       }
 
       ensureAudio();
-      queue = [];
-      queuedMs = 0;
-      started = false;
-      nextPlayTime = audioCtx.currentTime + 0.06;
-      lastSequence = null;
+      resetPlaybackQueue();
       setError('');
 
-      if (ws) {
-        ws.close();
-      }
+      closeSocketForRetry();
 
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
       const params = new URLSearchParams({ room: roomCode });
@@ -803,13 +880,14 @@ class LocalAudioBroadcastServer {
       }
 
       const wsUrl = proto + '://' + location.host + '/stream/audio?' + params.toString();
-      ws = new WebSocket(wsUrl);
+      const socket = new WebSocket(wsUrl);
+      ws = socket;
 
       setStatus('Connecting', 'connecting');
       connectBtn.disabled = true;
       toggleBtn.disabled = false;
 
-      ws.onopen = async () => {
+      socket.onopen = async () => {
         setStatus('Buffering', 'buffering');
         sendClientEvent('listener.ready', { roomId: roomCode });
         sendClientEvent('stream.ping', { clientTime: Date.now() });
@@ -817,9 +895,10 @@ class LocalAudioBroadcastServer {
         if (audioCtx.state !== 'running') {
           await audioCtx.resume();
         }
+        toggleBtn.textContent = 'Pause';
       };
 
-      ws.onmessage = (event) => {
+      socket.onmessage = (event) => {
         if (typeof event.data !== 'string') {
           return;
         }
@@ -833,7 +912,7 @@ class LocalAudioBroadcastServer {
 
         switch (decoded.type) {
           case 'stream.meta':
-            targetBufferMs = Number(decoded.targetBufferMs || 260);
+            targetBufferMs = Number(decoded.targetBufferMs || 420);
             updateBufferLabel();
             break;
           case 'stream.audio':
@@ -855,20 +934,26 @@ class LocalAudioBroadcastServer {
             break;
           }
           case 'error':
-            setStatus('Error', 'error');
-            setError(decoded.message || 'Stream error occurred.');
+            failConnection(decoded.message || 'Stream error occurred.');
+            break;
+          case 'stream.host_stopped':
+            failConnection(decoded.message || 'Host ended the stream.');
             break;
         }
       };
 
-      ws.onerror = () => {
-        setStatus('Error', 'error');
-        setError('Could not connect to stream.');
+      socket.onerror = () => {
+        failConnection('Could not connect to stream.');
       };
 
-      ws.onclose = () => {
+      socket.onclose = () => {
+        if (ws !== socket) {
+          return;
+        }
+        ws = null;
         stopPingLoop();
         connectBtn.disabled = false;
+        toggleBtn.disabled = true;
         setStatus('Disconnected', 'disconnected');
         if (started) {
           setError('Stream disconnected. Reconnect to continue.');
@@ -919,6 +1004,9 @@ class LocalAudioBroadcastServer {
 
     window.addEventListener('beforeunload', () => {
       stopPingLoop();
+      if (retryUnlockTimer) {
+        clearTimeout(retryUnlockTimer);
+      }
       if (scheduleTimer) {
         clearInterval(scheduleTimer);
       }

@@ -11,6 +11,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+TEST_ENV_DEFAULTS = {
+    'APP_VERSION': '1.1.4',
+    'REQUIRE_SERVER_CONNECTION_PIN': 'false',
+    'SERVER_CONNECTION_PIN': '',
+}
+
+for key, value in TEST_ENV_DEFAULTS.items():
+    os.environ[key] = value
+
 from app.core.config import get_settings  # noqa: E402
 from app.main import create_app  # noqa: E402
 

@@ -23,11 +23,14 @@ class ServerUrlService {
 
     final normalizedScheme = _normalizeScheme(parsed.scheme);
     var path = parsed.path;
-    if (path.isEmpty ||
-        path == '/' ||
-        path == '/status' ||
-        path == '/health' ||
-        path == '/stream/join') {
+    final comparablePath = path.length > 1 && path.endsWith('/')
+        ? path.substring(0, path.length - 1)
+        : path;
+    if (comparablePath.isEmpty ||
+        comparablePath == '/' ||
+        comparablePath == '/status' ||
+        comparablePath == '/health' ||
+        comparablePath == '/stream/join') {
       path = '/ws';
     }
 

@@ -239,6 +239,9 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                         settings: settings,
                         remoteServerStatus: remoteStatus,
                         destination: destination,
+                        serverConnectionPin: await ref
+                            .read(streamingSettingsRepositoryProvider)
+                            .readServerConnectionPin(),
                         audioSourceEnabled: _audioSourceEnabled,
                         microphoneEnabled: _microphoneEnabled,
                       );
@@ -275,7 +278,7 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
                       }
                     }
                   },
-            child: Text(_isCreatingRoom ? 'Creating...' : 'Create Room'),
+            child: Text(_isCreatingRoom ? 'Starting...' : 'Start Broadcast'),
           ),
         ],
       ),
@@ -344,23 +347,45 @@ class _HostCreateScreenState extends ConsumerState<HostCreateScreen> {
     return showModalBottomSheet<BroadcastDestination>(
       context: context,
       showDragHandle: true,
+      useSafeArea: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (context) {
+        final colors = Theme.of(context).colorScheme;
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Broadcast Destination',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: colors.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.route_rounded,
+                        color: colors.onPrimaryContainer,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Broadcast Destination',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'LAN and internet are both available. Choose where this room should broadcast.',
+                  'LAN and internet are both ready.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -437,13 +462,51 @@ class _DestinationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon),
-      title: Text(destination.title),
-      subtitle: Text(destination.subtitle),
-      trailing: const Icon(Icons.chevron_right_rounded),
-      onTap: onTap,
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.52),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: colors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: colors.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        destination.title,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        destination.subtitle,
+                        style: TextStyle(color: colors.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: colors.primary),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

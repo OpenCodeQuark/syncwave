@@ -8,6 +8,7 @@ from fastapi import WebSocket
 from pydantic import ValidationError
 
 from ..core.config import Settings
+from ..core.security import is_valid_server_connection_pin
 from ..models.events import EventEnvelope
 from ..services.room_service import RoomError
 from ..services.signaling_service import SignalingService
@@ -28,6 +29,7 @@ class WebSocketEventHandler:
         self._signaling = signaling
         self._settings = settings
         self._handshake_accepted: dict[str, bool] = {}
+        self._privileged_peers: set[str] = set()
 
     async def connect(self, *, peer_id: str, websocket: WebSocket) -> None:
         await self._manager.connect(websocket=websocket, peer_id=peer_id)
@@ -50,6 +52,7 @@ class WebSocketEventHandler:
     async def disconnect(self, *, peer_id: str) -> Optional[str]:
         room_id = self._manager.disconnect(peer_id=peer_id)
         self._handshake_accepted.pop(peer_id, None)
+        self._privileged_peers.discard(peer_id)
 
         if room_id is not None:
             broadcasts = self._signaling.handle_disconnect(room_id=room_id, peer_id=peer_id)
@@ -78,6 +81,27 @@ class WebSocketEventHandler:
                         payload={
                             'code': 'handshake_required',
                             'message': 'Send server.hello before signaling events.',
+                        },
+                    ),
+                )
+                return
+
+            if (
+                self._requires_privileged_auth(event.type)
+                and peer_id not in self._privileged_peers
+            ):
+                await self._manager.send_to_peer(
+                    peer_id=peer_id,
+                    event=EventEnvelope(
+                        type=self._failure_event_type(event.type),
+                        requestId=event.request_id,
+                        roomId=event.room_id,
+                        peerId=peer_id,
+                        payload={
+                            'code': 'server_connection_pin_required',
+                            'message': (
+                                'Server Connection PIN is required for host and relay actions.'
+                            ),
                         },
                     ),
                 )
@@ -152,9 +176,23 @@ class WebSocketEventHandler:
             )
             return
 
+        listener_only = self._is_listener_handshake(payload)
+        privileged = not self._settings.require_server_connection_pin
+
         if self._settings.require_server_connection_pin:
             server_pin = str(payload.get('serverConnectionPin') or '').strip()
             if not server_pin:
+                if listener_only:
+                    self._handshake_accepted[peer_id] = True
+                    self._privileged_peers.discard(peer_id)
+                    await self._send_server_ready(
+                        peer_id=peer_id,
+                        request_id=event.request_id,
+                        authenticated=False,
+                        listener_only=True,
+                    )
+                    return
+
                 await self._manager.send_to_peer(
                     peer_id=peer_id,
                     event=EventEnvelope(
@@ -170,7 +208,11 @@ class WebSocketEventHandler:
                 return
 
             expected_pin = self._settings.server_connection_pin.strip()
-            if not expected_pin or server_pin != expected_pin:
+            if (
+                not is_valid_server_connection_pin(server_pin)
+                or not is_valid_server_connection_pin(expected_pin)
+                or server_pin != expected_pin
+            ):
                 await self._manager.send_to_peer(
                     peer_id=peer_id,
                     event=EventEnvelope(
@@ -184,13 +226,33 @@ class WebSocketEventHandler:
                     ),
                 )
                 return
+            privileged = True
 
         self._handshake_accepted[peer_id] = True
+        if privileged:
+            self._privileged_peers.add(peer_id)
+        else:
+            self._privileged_peers.discard(peer_id)
+        await self._send_server_ready(
+            peer_id=peer_id,
+            request_id=event.request_id,
+            authenticated=privileged,
+            listener_only=listener_only and not privileged,
+        )
+
+    async def _send_server_ready(
+        self,
+        *,
+        peer_id: str,
+        request_id: Optional[str],
+        authenticated: bool,
+        listener_only: bool,
+    ) -> None:
         await self._manager.send_to_peer(
             peer_id=peer_id,
             event=EventEnvelope(
                 type='server.ready',
-                requestId=event.request_id,
+                requestId=request_id,
                 peerId=peer_id,
                 payload={
                     'status': 'ok',
@@ -198,6 +260,8 @@ class WebSocketEventHandler:
                     'serverVersion': self._settings.app_version,
                     'protocolVersion': self._settings.protocol_version,
                     'authenticationRequired': self._settings.require_server_connection_pin,
+                    'authenticated': authenticated,
+                    'listenerOnly': listener_only,
                     'capabilities': {
                         'roomLifecycle': True,
                         'syncPing': True,
@@ -206,6 +270,25 @@ class WebSocketEventHandler:
                 },
             ),
         )
+
+    def _is_listener_handshake(self, payload: dict[str, Any]) -> bool:
+        role = (
+            str(payload.get('clientRole') or payload.get('role') or '')
+            .strip()
+            .lower()
+        )
+        listener_only = payload.get('listenerOnly')
+        return role == 'listener' or listener_only is True
+
+    def _requires_privileged_auth(self, event_type: str) -> bool:
+        if not self._settings.require_server_connection_pin:
+            return False
+        return event_type in {
+            'room.create',
+            'stream.host_start',
+            'stream.host_stop',
+            'stream.audio_chunk',
+        }
 
     def _failure_event_type(self, request_type: Optional[str]) -> str:
         mapping = {

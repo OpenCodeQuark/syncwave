@@ -12,6 +12,7 @@ class SignalingService:
     def __init__(self, room_service: RoomService, sync_service: SyncService):
         self._room_service = room_service
         self._sync_service = sync_service
+        self._stream_meta_by_room: dict[str, dict[str, Any]] = {}
 
     def handle(self, event: EventEnvelope) -> tuple[EventEnvelope, list[EventEnvelope]]:
         if event.type == 'room.create':
@@ -73,7 +74,7 @@ class SignalingService:
             requestId=event.request_id,
             roomId=room.room_id,
             peerId=host_peer_id,
-            payload={'room': room.model_dump(by_alias=True, mode='json')},
+            payload={'room': self._public_room_payload(room)},
         )
         return response, []
 
@@ -84,6 +85,11 @@ class SignalingService:
             raise RoomError('peerId is required for room.join')
 
         payload = event.payload
+        existing_room = self._room_service.get_room(event.room_id)
+        already_joined = (
+            existing_room is not None
+            and any(peer.peer_id == event.peer_id for peer in existing_room.participants)
+        )
         listener = Peer(
             peerId=event.peer_id,
             deviceName=str(payload.get('deviceName') or 'Unknown Listener'),
@@ -103,23 +109,25 @@ class SignalingService:
             roomId=room.room_id,
             peerId=event.peer_id,
             payload={
-                'room': room.model_dump(by_alias=True, mode='json'),
+                'room': self._public_room_payload(room),
             },
         )
 
-        broadcast_events = [
-            EventEnvelope(
-                type='participant.joined',
-                roomId=room.room_id,
-                peerId=event.peer_id,
-                payload={'participant': listener.model_dump(by_alias=True, mode='json')},
-            ),
-            EventEnvelope(
-                type='stream.listener_count',
-                roomId=room.room_id,
-                payload={'count': len(room.participants)},
-            ),
-        ]
+        broadcast_events: list[EventEnvelope] = []
+        if not already_joined:
+            broadcast_events = [
+                EventEnvelope(
+                    type='participant.joined',
+                    roomId=room.room_id,
+                    peerId=event.peer_id,
+                    payload={'participant': listener.model_dump(by_alias=True, mode='json')},
+                ),
+                EventEnvelope(
+                    type='stream.listener_count',
+                    roomId=room.room_id,
+                    payload={'count': len(room.participants)},
+                ),
+            ]
 
         return joined_response, broadcast_events
 
@@ -158,6 +166,7 @@ class SignalingService:
         ]
 
         if room is not None and room.status == 'closed':
+            self._stream_meta_by_room.pop(event.room_id, None)
             broadcasts.append(
                 EventEnvelope(
                     type='room.closed',
@@ -192,6 +201,14 @@ class SignalingService:
         if room is None or room.status != 'active':
             raise RoomError('Room is not active for stream.host_start')
 
+        meta_payload = {
+            'roomId': event.room_id,
+            'streamStartedAt': event.payload.get('streamStartedAt'),
+            'targetBufferMs': event.payload.get('targetBufferMs', 420),
+            'serverTime': self._sync_service.server_timestamp_ms(),
+        }
+        self._stream_meta_by_room[event.room_id] = meta_payload
+
         return (
             EventEnvelope(
                 type='stream.ready',
@@ -201,8 +218,8 @@ class SignalingService:
                 payload={
                     'roomId': event.room_id,
                     'serverTimestamp': self._sync_service.server_timestamp_ms(),
-                    'streamStartedAt': event.payload.get('streamStartedAt'),
-                    'targetBufferMs': event.payload.get('targetBufferMs', 260),
+                    'streamStartedAt': meta_payload.get('streamStartedAt'),
+                    'targetBufferMs': meta_payload.get('targetBufferMs'),
                 },
             ),
             [
@@ -210,12 +227,7 @@ class SignalingService:
                     type='stream.meta',
                     roomId=event.room_id,
                     peerId=event.peer_id,
-                    payload={
-                        'roomId': event.room_id,
-                        'streamStartedAt': event.payload.get('streamStartedAt'),
-                        'targetBufferMs': event.payload.get('targetBufferMs', 260),
-                        'serverTime': self._sync_service.server_timestamp_ms(),
-                    },
+                    payload=meta_payload,
                 )
             ],
         )
@@ -225,6 +237,8 @@ class SignalingService:
     ) -> tuple[EventEnvelope, list[EventEnvelope]]:
         if event.room_id is None:
             raise RoomError('roomId is required for stream.host_stop')
+
+        self._stream_meta_by_room.pop(event.room_id, None)
 
         return (
             EventEnvelope(
@@ -250,13 +264,20 @@ class SignalingService:
         if event.room_id is None:
             raise RoomError('roomId is required for stream.listener_join')
 
+        meta_payload = {
+            'roomId': event.room_id,
+            **self._stream_meta_by_room.get(event.room_id, {}),
+        }
+        if 'serverTime' not in meta_payload:
+            meta_payload['serverTime'] = self._sync_service.server_timestamp_ms()
+
         return (
             EventEnvelope(
                 type='stream.listener_joined',
                 requestId=event.request_id,
                 roomId=event.room_id,
                 peerId=event.peer_id,
-                payload={'roomId': event.room_id},
+                payload=meta_payload,
             ),
             [],
         )
@@ -275,6 +296,23 @@ class SignalingService:
         chunk_payload['serverTime'] = self._sync_service.server_timestamp_ms()
         if 'roomId' not in chunk_payload:
             chunk_payload['roomId'] = event.room_id
+        self._stream_meta_by_room[event.room_id] = {
+            **self._stream_meta_by_room.get(event.room_id, {}),
+            'roomId': event.room_id,
+            'sampleRate': chunk_payload.get('sampleRate'),
+            'channelCount': chunk_payload.get('channelCount'),
+            'format': chunk_payload.get('format'),
+            'durationMs': chunk_payload.get('durationMs'),
+            'targetBufferMs': self._stream_meta_by_room.get(event.room_id, {}).get(
+                'targetBufferMs',
+                420,
+            ),
+            'streamStartedAt': chunk_payload.get(
+                'streamStartedAt',
+                self._stream_meta_by_room.get(event.room_id, {}).get('streamStartedAt'),
+            ),
+            'serverTime': chunk_payload['serverTime'],
+        }
 
         return (
             EventEnvelope(
@@ -330,6 +368,7 @@ class SignalingService:
             ),
         ]
         if room is not None and room.status == 'closed':
+            self._stream_meta_by_room.pop(room_id, None)
             events.append(
                 EventEnvelope(
                     type='room.closed',
@@ -338,3 +377,8 @@ class SignalingService:
                 )
             )
         return events
+
+    def _public_room_payload(self, room) -> dict[str, Any]:
+        payload = room.model_dump(by_alias=True, mode='json')
+        payload.pop('pinHash', None)
+        return payload

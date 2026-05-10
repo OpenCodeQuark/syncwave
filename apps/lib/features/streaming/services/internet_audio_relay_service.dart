@@ -133,7 +133,7 @@ class InternetAudioRelayService {
       'payload': {
         'roomId': roomId,
         'streamStartedAt': DateTime.now().millisecondsSinceEpoch,
-        'targetBufferMs': 260,
+        'targetBufferMs': 420,
       },
     });
 

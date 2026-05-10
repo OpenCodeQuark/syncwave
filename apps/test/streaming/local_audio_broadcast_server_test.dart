@@ -44,6 +44,14 @@ void main() {
         expect(html, contains("location.protocol === 'https:' ? 'wss' : 'ws'"));
         expect(html, contains('/stream/audio'));
         expect(html, contains('LAN-R12B9'));
+        expect(html, contains('let targetBufferMs = 420'));
+        expect(html, contains('function failConnection'));
+        expect(html, contains('unlockConnectSoon'));
+        expect(html, contains('function enqueueSilence'));
+        expect(
+          html,
+          contains('Minor network jitter smoothed with silence fill.'),
+        );
         client.close(force: true);
       },
     );
@@ -138,6 +146,7 @@ void main() {
 
       expect(metaEvent, isNotNull);
       expect(metaEvent!['roomId'], 'LAN-R12B9');
+      expect(metaEvent['targetBufferMs'], 420);
 
       await server.broadcast(Uint8List.fromList(<int>[1, 2, 3, 4]));
 

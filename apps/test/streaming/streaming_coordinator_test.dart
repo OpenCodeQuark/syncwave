@@ -50,13 +50,16 @@ class _FakeWanRoomService extends WanRoomService {
 
   String? nextRoomId;
   AppException? nextError;
+  String? lastServerConnectionPin;
 
   @override
   Future<String> createWanRoom({
     required String serverWebSocketUrl,
     required String roomName,
     String? pin,
+    String? serverConnectionPin,
   }) async {
+    lastServerConnectionPin = serverConnectionPin;
     if (nextError != null) {
       throw nextError!;
     }
@@ -167,6 +170,7 @@ void main() {
       ),
       remoteServerStatus: remoteReady,
       destination: BroadcastDestination.both,
+      serverConnectionPin: '12345678',
       audioSourceEnabled: true,
       microphoneEnabled: false,
     );
@@ -175,6 +179,7 @@ void main() {
     expect(session.roomId, 'LAN-R12B9');
     expect(session.wanRoomId, 'WAN-RM01P');
     expect(session.serverUrl, 'wss://your-server.example.com/ws');
+    expect(wanService.lastServerConnectionPin, '12345678');
   });
 
   test(

@@ -14,7 +14,7 @@ void main() {
           normalizedWebSocketUrl: 'wss://your-server.example.com/ws',
           statusUrl: 'https://your-server.example.com/status',
           checkedAt: DateTime.utc(2026, 5, 10, 8, 30),
-          serverVersion: '1.1.0',
+          serverVersion: '1.1.4',
           protocolVersion: '1',
           redisConnected: false,
           activeRooms: 3,

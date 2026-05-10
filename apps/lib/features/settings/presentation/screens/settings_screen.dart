@@ -135,17 +135,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       enabled: _internetEnabled,
                       keyboardType: TextInputType.number,
                       obscureText: true,
-                      maxLength: 10,
+                      maxLength: 8,
                       decoration: InputDecoration(
-                        labelText:
-                            'Server Connection PIN (optional, 8-10 digits)',
+                        labelText: 'Server Connection PIN (optional, 8 digits)',
                         helperText: settings.serverConnectionPinConfigured
                             ? 'A Server Connection PIN is currently configured.'
                             : 'Leave blank if server does not require authentication.',
                         counterText: '',
                         errorText: isServerPinValid
                             ? null
-                            : 'Server Connection PIN must be 8 to 10 digits.',
+                            : 'Server Connection PIN must be exactly 8 digits.',
                       ),
                     ),
                     const SizedBox(height: 4),

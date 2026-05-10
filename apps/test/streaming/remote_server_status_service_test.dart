@@ -54,7 +54,7 @@ void main() {
         httpClient: MockClient((request) async {
           if (request.url.path == '/status') {
             return http.Response(
-              '{"app":"SyncWave Signaling Server","version":"1.1.0","supportedProtocolVersion":"1","redisConnected":true,"activeRooms":2,"activeConnections":3,"authenticationRequired":false}',
+              '{"app":"SyncWave Signaling Server","version":"1.1.4","supportedProtocolVersion":"1","redisConnected":true,"activeRooms":2,"activeConnections":3,"authenticationRequired":false}',
               200,
             );
           }
@@ -65,7 +65,7 @@ void main() {
       final status = await service.checkServer(
         serverUrlInput: 'https://your-server.example.com',
         appName: 'SyncWave',
-        appVersion: '1.1.0',
+        appVersion: '1.1.4',
         protocolVersion: '1',
       );
 
@@ -77,7 +77,7 @@ void main() {
         status.state,
         RemoteServerConnectionState.serverOnlineNotConnected,
       );
-      expect(status.serverVersion, '1.1.0');
+      expect(status.serverVersion, '1.1.4');
       expect(status.activeRooms, 2);
       expect(status.activeConnections, 3);
     });
@@ -104,7 +104,7 @@ void main() {
       final status = await service.checkServer(
         serverUrlInput: 'wss://your-server.example.com/ws',
         appName: 'SyncWave',
-        appVersion: '1.1.0',
+        appVersion: '1.1.4',
         protocolVersion: '1',
       );
 
@@ -126,7 +126,7 @@ void main() {
       final status = await service.checkServer(
         serverUrlInput: 'https://your-server.example.com',
         appName: 'SyncWave',
-        appVersion: '1.1.0',
+        appVersion: '1.1.4',
         protocolVersion: '1',
       );
 
@@ -142,7 +142,7 @@ void main() {
         remoteSignalingClient: gateway,
         httpClient: MockClient((request) async {
           return http.Response(
-            '{"app":"SyncWave Signaling Server","version":"1.1.0","supportedProtocolVersion":"1"}',
+            '{"app":"SyncWave Signaling Server","version":"1.1.4","supportedProtocolVersion":"1"}',
             200,
           );
         }),
@@ -151,7 +151,7 @@ void main() {
       final status = await service.checkServer(
         serverUrlInput: 'https://your-server.example.com',
         appName: 'SyncWave',
-        appVersion: '1.1.0',
+        appVersion: '1.1.4',
         protocolVersion: '1',
         attemptWebSocket: true,
       );
@@ -180,7 +180,7 @@ void main() {
           remoteSignalingClient: gateway,
           httpClient: MockClient((request) async {
             return http.Response(
-              '{"app":"SyncWave Signaling Server","version":"1.1.0","supportedProtocolVersion":"1","authenticationRequired":true}',
+              '{"app":"SyncWave Signaling Server","version":"1.1.4","supportedProtocolVersion":"1","authenticationRequired":true}',
               200,
             );
           }),
@@ -189,7 +189,7 @@ void main() {
         final status = await service.checkServer(
           serverUrlInput: 'https://your-server.example.com',
           appName: 'SyncWave',
-          appVersion: '1.1.0',
+          appVersion: '1.1.4',
           protocolVersion: '1',
           attemptWebSocket: true,
         );
@@ -220,7 +220,7 @@ void main() {
         remoteSignalingClient: gateway,
         httpClient: MockClient((request) async {
           return http.Response(
-            '{"app":"SyncWave Signaling Server","version":"1.1.0","supportedProtocolVersion":"1","authenticationRequired":true}',
+            '{"app":"SyncWave Signaling Server","version":"1.1.4","supportedProtocolVersion":"1","authenticationRequired":true}',
             200,
           );
         }),
@@ -229,7 +229,7 @@ void main() {
       final status = await service.checkServer(
         serverUrlInput: 'https://your-server.example.com',
         appName: 'SyncWave',
-        appVersion: '1.1.0',
+        appVersion: '1.1.4',
         protocolVersion: '1',
         attemptWebSocket: true,
       );
@@ -249,7 +249,7 @@ void main() {
             },
             {
               'type': 'server.ready',
-              'payload': {'serverVersion': '1.1.0', 'protocolVersion': '1'},
+              'payload': {'serverVersion': '1.1.4', 'protocolVersion': '1'},
             },
           ]);
 
@@ -258,7 +258,7 @@ void main() {
           remoteSignalingClient: gateway,
           httpClient: MockClient((request) async {
             return http.Response(
-              '{"app":"SyncWave Signaling Server","version":"1.1.0","supportedProtocolVersion":"1"}',
+              '{"app":"SyncWave Signaling Server","version":"1.1.4","supportedProtocolVersion":"1"}',
               200,
             );
           }),
@@ -267,7 +267,7 @@ void main() {
         final status = await service.checkServer(
           serverUrlInput: 'https://your-server.example.com',
           appName: 'SyncWave',
-          appVersion: '1.1.0',
+          appVersion: '1.1.4',
           protocolVersion: '1',
           attemptWebSocket: true,
         );
@@ -291,7 +291,7 @@ void main() {
           },
           {
             'type': 'server.ready',
-            'payload': {'serverVersion': '1.1.0', 'protocolVersion': '1'},
+            'payload': {'serverVersion': '1.1.4', 'protocolVersion': '1'},
           },
         ]);
 
@@ -300,7 +300,7 @@ void main() {
         remoteSignalingClient: gateway,
         httpClient: MockClient((request) async {
           return http.Response(
-            '{"app":"SyncWave Signaling Server","version":"1.1.0","supportedProtocolVersion":"1"}',
+            '{"app":"SyncWave Signaling Server","version":"1.1.4","supportedProtocolVersion":"1"}',
             200,
           );
         }),
@@ -309,7 +309,7 @@ void main() {
       final status = await service.connect(
         serverUrlInput: 'https://your-server.example.com',
         appName: 'SyncWave',
-        appVersion: '1.1.0',
+        appVersion: '1.1.4',
         protocolVersion: '1',
       );
 
